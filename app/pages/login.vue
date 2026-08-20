@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useAuth } from '~/composables/useAuth'
+
 definePageMeta({
   middleware: 'guest'
 })
 
-const { login, loading, error } = useAuth()
+const { login, loading, error: authError } = useAuth()
 
 const form = reactive({
   email: '',
@@ -26,7 +28,7 @@ const handleLogin = async () => {
     <UiCard variant="glass" maxWidth="420px">
       <div class="card-header">
         <div class="logo-badge">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
           </svg>
         </div>
@@ -35,14 +37,15 @@ const handleLogin = async () => {
       </div>
 
       <!-- Alert Message on Error -->
-      <div v-if="error" class="error-alert">
+      <div v-if="authError" class="error-alert">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
           <line x1="12" y1="8" x2="12" y2="12"/>
           <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
-        <span>{{ error }}</span>
+        <span>{{ authError }}</span>
       </div>
+
 
       <form @submit.prevent="handleLogin" class="login-form">
         <!-- Field: Email -->

@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useAuth } from '~/composables/useAuth'
+
 definePageMeta({
   middleware: 'auth'
 })
 
 const { user, logout } = useAuth()
+
 
 const showModal = ref(false)
 </script>
