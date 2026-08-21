@@ -22,7 +22,9 @@ export const useAuth = () => {
 
   const config = useRuntimeConfig()
 
+
   const isAuthenticated = computed(() => !!token.value)
+  const { $api } = useNuxtApp()
 
   /**
    * Iniciar sesión llamando al backend (NestJS: POST /auth/login)
@@ -32,8 +34,7 @@ export const useAuth = () => {
     error.value = null
 
     try {
-      const response = await $fetch<LoginResponse>('/auth/login', {
-        baseURL: config.public.apiBase,
+      const response = await $api<LoginResponse>('/auth/login', {
         method: 'POST',
         body: { email, password }
       })
