@@ -23,7 +23,11 @@ export default defineNuxtPlugin((nuxtApp) => {
         token.value = null
         navigateTo('/login')
       } else {
-        console.error('API Error:', response._data?.message || response.statusText)
+        const data = response._data as import('~/types/api').ApiErrorData | undefined
+        const message = data?.message
+          ? (Array.isArray(data.message) ? data.message.join(', ') : data.message)
+          : response.statusText
+        console.error('API Error:', message)
       }
     }
   })

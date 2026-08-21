@@ -44,9 +44,26 @@ export const useAuth = () => {
         await navigateTo('/dashboard')
         return true
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error al iniciar sesión:', err)
-      error.value = err.data?.message || err.message || 'Credenciales inválidas. Verifica tu correo y contraseña.'
+
+      const isFetchError = typeof err === 'object' && err !== null && 'data' in err;
+
+      if (isFetchError) {
+        const fetchError = err as import('ofetch').FetchError<import('~/types/api').ApiErrorData>
+        const data = fetchError.data
+
+        if (data && data.message) {
+          error.value = Array.isArray(data.message) ? data.message.join(', ') : data.message
+        } else {
+          error.value = fetchError.message || 'Credenciales inválidas. Verifica tu correo y contraseña.'
+        }
+      } else if (err instanceof Error) {
+         error.value = err.message
+      } else {
+         error.value = 'Ha ocurrido un error inesperado.'
+      }
+
       return false
     } finally {
       loading.value = false
