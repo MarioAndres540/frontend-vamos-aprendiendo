@@ -1,0 +1,14 @@
+{
+  "watch": [
+    ".env",
+    "nuxt.config.ts"
+  ],
+  "ext": "env,ts",
+  "exec": "nuxt dev",
+  "ignore": [
+    ".nuxt",
+    ".output",
+    "node_modules",
+    "dist"
+  ]
+}

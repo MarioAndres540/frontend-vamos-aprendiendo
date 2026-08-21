@@ -15,11 +15,11 @@ export const useAuth = () => {
     maxAge: 60 * 60 * 24 * 7, // 7 días
     sameSite: 'lax'
   })
-  
+
   const user = useState<User | null>('auth_user', () => null)
   const loading = useState<boolean>('auth_loading', () => false)
   const error = useState<string | null>('auth_error', () => null)
-  
+
   const config = useRuntimeConfig()
 
   const isAuthenticated = computed(() => !!token.value)
@@ -41,7 +41,7 @@ export const useAuth = () => {
       if (response && response.access_token) {
         token.value = response.access_token
         user.value = response.user || { email }
-        
+
         // Redireccionar a la página protegida
         await navigateTo('/dashboard')
         return true

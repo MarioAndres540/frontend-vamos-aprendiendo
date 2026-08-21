@@ -5,7 +5,7 @@ definePageMeta({
   middleware: 'guest'
 })
 
-const { login, loading, error: authError } = useAuth()
+let { login, loading, error: authError } = useAuth()
 
 const form = reactive({
   email: '',

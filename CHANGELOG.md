@@ -13,6 +13,9 @@ Todos los cambios notables realizados en este proyecto se documentarán en este 
   - Creado archivo [.env](file:///E:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/.env) para variables locales.
   - Creado plantilla [.env.example](file:///E:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/.env.example) para control de versiones seguro.
   - Verificado que `.env` esté ignorado en [.gitignore](file:///E:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/.gitignore).
+  - Configurado prefijo global `/api/v1` en `NUXT_PUBLIC_API_BASE` (`http://localhost:3000/api/v1`) para centralizar las llamadas API.
+- **Automatización de Desarrollo:**
+  - Configurado [nodemon.json](file:///E:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/nodemon.json) y script `npm run dev` para reiniciar el proceso automáticamente ante cambios en [.env](file:///E:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/.env) o [nuxt.config.ts](file:///E:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/nuxt.config.ts).
 
 ### 🐛 Correcciones Técnicas
 - **Error `#app-manifest`:** Corregido fallo de resolución de importaciones en Vite deshabilitando la opción experimental `experimental.appManifest = false` en [nuxt.config.ts](file:///E:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/nuxt.config.ts).
