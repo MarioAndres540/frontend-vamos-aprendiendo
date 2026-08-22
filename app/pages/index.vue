@@ -2,7 +2,7 @@
 const token = useCookie('auth_token')
 
 if (token.value) {
-  await navigateTo('/dashboard')
+  await navigateTo('/home')
 } else {
   await navigateTo('/login')
 }

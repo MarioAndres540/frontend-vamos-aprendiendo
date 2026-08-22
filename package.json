@@ -11,7 +11,12 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@primeuix/themes": "^1.2.5",
+    "@primevue/nuxt-module": "^4.5.5",
     "nuxt": "^4.4.8",
+    "primeicons": "^8.0.0",
+    "primevue": "^4.5.5",
+    "sass-embedded": "^1.103.1",
     "vue": "^3.5.38",
     "vue-router": "^5.1.0"
   },

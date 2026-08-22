@@ -1,0 +1,165 @@
+@use "variables" as *;
+@use "mixins" as *;
+
+:root {
+  --color-primary-50: #{$color-primary-50};
+  --color-primary-100: #{$color-primary-100};
+  --color-primary-400: #{$color-primary-400};
+  --color-primary-500: #{$color-primary-500};
+  --color-primary-600: #{$color-primary-600};
+  --color-primary-700: #{$color-primary-700};
+
+  --color-accent-purple: #{$color-accent-purple};
+  --color-accent-pink: #{$color-accent-pink};
+  --color-accent-blue: #{$color-accent-blue};
+
+  --color-danger-500: #{$color-danger-500};
+  --color-danger-bg: #{$color-danger-bg};
+  --color-danger-border: #{$color-danger-border};
+  --color-danger-text: #{$color-danger-text};
+
+  --color-success-500: #{$color-success-500};
+  --color-success-bg: #{$color-success-bg};
+  --color-success-border: #{$color-success-border};
+
+  --bg-app: #{$bg-app};
+  --bg-surface-dark: #{$bg-surface-dark};
+  --bg-surface-glass: #{$bg-surface-glass};
+  --bg-input: #{$bg-input};
+  --bg-input-focus: #{$bg-input-focus};
+
+  --text-primary: #{$text-primary};
+  --text-secondary: #{$text-secondary};
+  --text-muted: #{$text-muted};
+  --text-placeholder: #{$text-placeholder};
+
+  --border-subtle: #{$border-subtle};
+  --border-input: #{$border-input};
+  --border-focus: #{$border-focus};
+
+  --radius-sm: #{$radius-sm};
+  --radius-md: #{$radius-md};
+  --radius-lg: #{$radius-lg};
+  --radius-xl: #{$radius-xl};
+  --radius-full: #{$radius-full};
+
+  --shadow-glow-primary: #{$shadow-glow-primary};
+  --shadow-glass: #{$shadow-glass};
+  --font-family: #{$font-family};
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  box-sizing: border-box;
+  min-height: 100vh;
+}
+
+*, *::before, *::after {
+  box-sizing: inherit;
+}
+
+// PrimeVue Global Overrides for dark theme integration
+.p-inputtext,
+.p-select,
+.p-password input,
+.p-inputnumber input {
+  background: var(--bg-input) !important;
+  border-color: var(--border-input) !important;
+  color: var(--text-primary) !important;
+  border-radius: var(--radius-md) !important;
+  font-family: inherit !important;
+  font-size: 0.95rem !important;
+
+  &:focus,
+  &:focus-visible {
+    border-color: var(--border-focus) !important;
+    background: var(--bg-input-focus) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+  }
+
+  &::placeholder {
+    color: var(--text-placeholder) !important;
+  }
+}
+
+.p-password {
+  width: 100%;
+  input {
+    width: 100%;
+  }
+}
+
+.p-select {
+  width: 100%;
+}
+
+.p-select-overlay {
+  background: var(--bg-surface-dark) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-glass) !important;
+
+  .p-select-option {
+    color: var(--text-primary) !important;
+    border-radius: var(--radius-sm);
+    margin: 2px 4px;
+
+    &.p-select-option-selected {
+      background: rgba(99, 102, 241, 0.2) !important;
+      color: var(--color-primary-100) !important;
+    }
+
+    &:not(.p-select-option-selected):hover {
+      background: rgba(255, 255, 255, 0.08) !important;
+    }
+  }
+}
+
+.p-button {
+  border-radius: var(--radius-md) !important;
+  font-family: inherit !important;
+  font-weight: 600 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+
+  &.p-button-primary {
+    background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600)) !important;
+    border: none !important;
+    color: #ffffff !important;
+    box-shadow: var(--shadow-glow-primary) !important;
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700)) !important;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45) !important;
+    }
+  }
+}
+
+.p-dialog {
+  background: var(--bg-surface-glass) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid var(--border-subtle) !important;
+  border-radius: var(--radius-xl) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-glass) !important;
+
+  .p-dialog-header,
+  .p-dialog-content,
+  .p-dialog-footer {
+    background: transparent !important;
+    color: var(--text-primary) !important;
+  }
+
+  .p-dialog-header {
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .p-dialog-footer {
+    border-top: 1px solid var(--border-subtle);
+  }
+}

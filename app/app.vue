@@ -1,3 +1,14 @@
+<script setup lang="ts">
+useHead({
+  title: 'Vamos Aprendiendo',
+  link: [
+    { rel: 'icon', type: 'image/png', href: '/avatar.png' },
+    { rel: 'shortcut icon', type: 'image/png', href: '/avatar.png' },
+    { rel: 'apple-touch-icon', href: '/avatar.png' }
+  ]
+})
+</script>
+
 <template>
   <NuxtLayout>
     <NuxtRouteAnnouncer />

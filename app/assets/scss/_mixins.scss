@@ -1,0 +1,33 @@
+@use "variables" as *;
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin glass-card {
+  background: $bg-surface-glass;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid $border-subtle;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-glass;
+}
+
+@mixin glow-sphere($color1, $color2, $size: 400px) {
+  position: absolute;
+  width: $size;
+  height: $size;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.45;
+  pointer-events: none;
+  background: radial-gradient(circle, $color1, $color2);
+}
+
+@mixin responsive-sm {
+  @media (max-width: 580px) {
+    @content;
+  }
+}
