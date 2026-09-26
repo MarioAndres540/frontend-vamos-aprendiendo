@@ -39,3 +39,30 @@ Todos los cambios notables realizados en este proyecto se documentarán en este 
   - [UiButton.vue](file:///E:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/app/components/ui/UiButton.vue): Botón centralizado con soporte para variantes (`primary`, `secondary`, `danger`, `ghost`) y estados de carga.
   - [UiInput.vue](file:///E:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/app/components/ui/UiInput.vue): Campo de texto con etiquetas, slots para íconos y mensajes de validación.
   - [UiModal.vue](file:///E:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/app/components/ui/UiModal.vue): Componente Popup/Modal con difuminado de fondo (*backdrop blur*), animaciones de entrada y secciones personalizables (header, body, footer).
+
+---
+
+## [Unreleased] - 2026-09-12
+
+### 🚀 Implementado: Bypass de Formulario Inicial y Gestión de Roles
+
+- **Persistencia de Rol en Sesión ([app/composables/useAuth.ts](file:///e:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/app/composables/useAuth.ts)):**
+  - Configurada cookie `user_role` (`maxAge: 7 días`, `sameSite: 'lax'`) para mantener el rol del usuario ante recargas de página (F5).
+  - Almacenamiento automático del rol en cookie (`userRole.value = userData.role || null`) durante el `login()`.
+  - Limpieza de cookie de rol (`userRole.value = null`) en el flujo de `logout()`.
+  - Exposición de `userRole` en el retorno de `useAuth()` para su consumo global.
+- **Definición de Roles:**
+  - Creado `enum Role` en [useAuth.ts](file:///e:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/app/composables/useAuth.ts) replicando los valores de backend (`ADMIN = 'admin'`, `USER = 'usuario'`, `TEACHER = 'profesor'`, `TEST = 'test'`).
+- **Protección de Rutas en Middleware ([app/middleware/auth.ts](file:///e:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/app/middleware/auth.ts)):**
+  - Integrado `useAuth()` para leer `user` y `userRole`.
+- **Ajuste de Comparación del Rol Docente ([app/composables/useAuth.ts](file:///e:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/app/composables/useAuth.ts) y [app/middleware/auth.ts](file:///e:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/app/middleware/auth.ts)):**
+  - Actualizada la condición de verificación para normalizar a minúsculas (`.toLowerCase()`) y validar contra `Role.ADMIN` y `Role.TEACHER` (`'profesor'`).
+  - Importación explícita de `Role` en el middleware `auth.ts`.
+  - Corrección de la redirección para que los docentes sean enviados a `/dashboard` y no a `/profile-selection`.
+
+### ⏳ Pendiente por Completar
+
+- **Backend - Módulo Docente y Consulta de Institución:**
+  - En `backend`: Redactar migración DDL en `20260912_create_institutions_and_students.sql`, implementar `TeacherModule`, `TeacherService` y registrarlo en `AppModule`.
+
+

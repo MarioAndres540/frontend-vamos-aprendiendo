@@ -1,3 +1,10 @@
+export enum Role {
+  ADMIN = 'admin',
+  USER = 'usuario',
+  TEACHER = 'profesor',
+  TEST = 'test'
+}
+
 export interface User {
   id?: string | number
   email: string
@@ -6,6 +13,8 @@ export interface User {
   lastName?: string
   role?: string
   hasCompletedChildSetup?: boolean
+  /** Indica si el usuario ya completó el diagnóstico inicial (persiste en backend) */
+  hasCompletedSetup?: boolean
 }
 
 export interface ChildProfile {
@@ -33,6 +42,8 @@ export interface LoginResponse {
   expiresIn?: number
   user?: User
   message?: string
+  /** Retornado directamente por el backend en la respuesta de login */
+  hasCompletedSetup?: boolean
 }
 
 export const useAuth = () => {
@@ -43,6 +54,11 @@ export const useAuth = () => {
 
   const refreshToken = useCookie<string | null>('refresh_token', {
     maxAge: 60 * 60 * 24 * 7, // 7 días
+    sameSite: 'lax'
+  })
+
+  const userRole = useCookie<string | null>('user_role', {
+    maxAge: 60 * 60 * 24 * 7,
     sameSite: 'lax'
   })
 
@@ -91,10 +107,23 @@ export const useAuth = () => {
         if (response.refreshToken) {
           refreshToken.value = response.refreshToken
         }
-        user.value = response.user || { email }
+        const userData = response.user || { email }
+        user.value = userData
 
-        // Redirigir a la vista de selección de perfil ("¿Quién está aprendiendo hoy?")
-        await navigateTo('/profile-selection')
+        userRole.value = userData.role || null
+
+        // Sincronizar estado de setup desde el backend (persiste entre dispositivos)
+        const completedSetup = userData.hasCompletedSetup === true
+        hasChildProfile.value = completedSetup
+
+        const role = userData.role ? userData.role.toLowerCase() : ''
+
+        // Redirigir al dashboard si: es staff O ya completó el diagnóstico inicial
+        if (role === Role.ADMIN || role === Role.TEACHER || completedSetup) {
+          await navigateTo('/dashboard')
+        } else {
+          await navigateTo('/profile-selection')
+        }
         return true
       } else {
         error.value = 'Respuesta inesperada del servidor. No se recibió el token de autenticación.'
@@ -130,7 +159,7 @@ export const useAuth = () => {
           refreshToken.value = response.refreshToken
         }
         user.value = response.user || { email: userData.email, firstName: userData.firstName, lastName: userData.lastName }
-        
+
         // Redirigir al registro del niño
         await navigateTo('/child-registration')
       } else {
@@ -152,6 +181,8 @@ export const useAuth = () => {
   const logout = async () => {
     token.value = null
     refreshToken.value = null
+    userRole.value = null
+    hasChildProfile.value = false
     user.value = null
     await navigateTo('/login')
   }
@@ -159,6 +190,7 @@ export const useAuth = () => {
   return {
     token,
     refreshToken,
+    userRole,
     user,
     childData,
     hasChildProfile,

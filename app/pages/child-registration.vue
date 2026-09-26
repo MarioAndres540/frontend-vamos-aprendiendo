@@ -2,6 +2,7 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '~/composables/useAuth'
+import { useStudentSetup } from '~/composables/useStudentSetup'
 
 // Asset imports
 import avatarImg from '~/assets/img/avatar.png'
@@ -25,6 +26,7 @@ definePageMeta({
 const route = useRoute()
 const router = useRouter()
 const { user, setChildRegistered } = useAuth()
+const { submitSetup, loading: setupLoading, error: setupError } = useStudentSetup()
 
 // Active Mode: 'kids' (Infantil: 4-12 años) | 'adults' (Adulto: 18+ años)
 const activeMode = ref<'kids' | 'adults'>(route.query.mode === 'adults' ? 'adults' : 'kids')
@@ -333,20 +335,43 @@ const handleNext = async () => {
   if (currentStep.value < totalSteps) {
     currentStep.value++
   } else {
-    // Show Transition Screen
+    // Show Transition Screen while saving to backend
     isTransitioning.value = true
 
-    if (setChildRegistered) {
+    // Build the payload based on active mode
+    const payload = activeMode.value === 'kids'
+      ? {
+          mode: 'kids' as const,
+          superPower: kidsForm.superPower,
+          chosenRealm: kidsForm.chosenRealm,
+          selfEfficacy: kidsForm.selfEfficacy,
+          playStyles: kidsForm.playStyles,
+        }
+      : {
+          mode: 'adults' as const,
+          cognitiveGoal: adultsForm.cognitiveGoal,
+          learningStyle: adultsForm.learningStyle,
+          topicInterests: adultsForm.topicInterests,
+        }
+
+    // Persist to backend (Opción A: guardamos antes de navegar)
+    const success = await submitSetup(payload)
+
+    if (success) {
+      // Actualizar estado local también (compatibilidad)
       setChildRegistered(true, {
         childName: userName.value,
-        documentNumber: '100200300',
-        birthDate: new Date()
+        documentNumber: '000000000',
+        birthDate: new Date(),
       })
-    }
 
-    setTimeout(async () => {
-      await navigateTo('/dashboard')
-    }, 2800)
+      setTimeout(async () => {
+        await navigateTo('/dashboard')
+      }, 2800)
+    } else {
+      // Si falla el guardado, ocultar pantalla de transición y mostrar error
+      isTransitioning.value = false
+    }
   }
 }
 </script>

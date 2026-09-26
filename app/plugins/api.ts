@@ -34,3 +34,14 @@ export default defineNuxtPlugin((nuxtApp) => {
     }
   }
 })
+
+export function useUserPresence(userId: string) {
+  const { data, refresh } = useFetch(`/presence/status/${userId}`, {
+    $fetch: useNuxtApp().$api, // tu wrapper existente con el Bearer token
+  });
+
+  const interval = setInterval(() => refresh(), 7000); // cada 7s, dentro del margen que pediste
+  onUnmounted(() => clearInterval(interval));
+
+  return { data };
+}

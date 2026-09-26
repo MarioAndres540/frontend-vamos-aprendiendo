@@ -11,6 +11,7 @@ const form = reactive({
   firstName: '',
   lastName: '',
   documentType: 'CC',
+  documentTypesBoys:'TI',
   documentNumber: '',
   age: null as number | null,
   email: '',
@@ -27,6 +28,12 @@ const documentTypes = [
   { value: 'CE', label: 'Cédula de Extranjería (CE)' },
   { value: 'PAS', label: 'Pasaporte (PAS)' },
   { value: 'PEP', label: 'Permiso Especial de Permanencia (PEP)' }
+]
+
+const documentTypesBoys = [
+  { value: 'TI', label: 'Tarjeta de Identidad (TI)' },
+  { value: 'PAS', label: 'Pasaporte (PAS)' },
+  { value: 'RC', label: 'Registro civil (RC)' },
 ]
 
 const handleRegister = async () => {
@@ -86,7 +93,7 @@ const handleRegister = async () => {
             <InputText
               id="firstName"
               v-model="form.firstName"
-              placeholder="Mario"
+              placeholder="Primer Nombre"
               required
               :disabled="loading"
               class="w-full"
@@ -98,7 +105,7 @@ const handleRegister = async () => {
             <InputText
               id="lastName"
               v-model="form.lastName"
-              placeholder="Jaramillo"
+              placeholder="Apellido"
               required
               :disabled="loading"
               class="w-full"
@@ -184,6 +191,81 @@ const handleRegister = async () => {
               class="w-full"
             />
           </div>
+        </div>
+
+        <div>
+          <div class="form-row">
+          <div class="form-field">
+            <label for="firstName">Nombre</label>
+            <InputText
+              id="firstName"
+              v-model="form.firstName"
+              placeholder="Primer Nombre"
+              required
+              :disabled="loading"
+              class="w-full"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="lastName">Apellido</label>
+            <InputText
+              id="lastName"
+              v-model="form.lastName"
+              placeholder="Apellido"
+              required
+              :disabled="loading"
+              class="w-full"
+            />
+          </div>
+        </div>
+
+        <!-- Fila: Tipo y Número de Documento -->
+        <div class="form-row">
+          <div class="form-field">
+            <label for="documentType">Tipo de Documento</label>
+            <Select
+              id="documentType"
+              v-model="form.documentTypesBoys"
+              :options="documentTypesBoys"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Seleccione un tipo"
+              :disabled="loading"
+              class="w-full"
+            />
+          </div>
+
+          <div class="form-field">
+            <label for="documentNumber">Número de Documento</label>
+            <InputText
+              id="documentNumber"
+              v-model="form.documentNumber"
+              placeholder="1128451610"
+              required
+              :disabled="loading"
+              class="w-full"
+            />
+          </div>
+        </div>
+
+        <!-- Fila: Edad y Teléfono -->
+        <div class="form-row">
+          <div class="form-field">
+            <label for="age">Edad</label>
+            <InputNumber
+              id="age"
+              v-model="form.age"
+              :min="1"
+              :max="120"
+              placeholder="37"
+              required
+              :disabled="loading"
+              class="w-full"
+              inputClass="w-full"
+            />
+          </div>
+        </div>
         </div>
 
         <!-- Fila: Contraseña -->
