@@ -37,6 +37,8 @@ export default defineNuxtConfig({
     '~/assets/scss/main.scss'
   ],
 
+  // El puerto de desarrollo se define solo aquí. No usar PORT en .env: Nuxt/Vite lo toman como primer
+  // candidato para el WebSocket de HMR, que termina ocupando 127.0.0.1:4242 y responde "426 Upgrade Required"
   devServer: {
     port: 4242
   },

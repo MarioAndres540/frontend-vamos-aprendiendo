@@ -15,15 +15,34 @@ import womanImg from '~/assets/img/woman.png'
 import grilImg from '~/assets/img/gril.png'
 import boyImg from '~/assets/img/boy.png'
 
+// Dashboard de usuarios: tutores y adultos (con el formulario inicial completo) y testers
 definePageMeta({
-  middleware: 'auth'
+  middleware: 'profile-access',
+  allowedProfiles: ['tutor', 'adulto', 'tester'],
 })
 
-const { user, logout } = useAuth()
+const { user, logout, profileType, firstName } = useAuth()
+
+// Saludo con el nombre real del usuario (no "Docente": este dashboard es de tutores, adultos y testers)
+const greetingName = computed(() => {
+  const name = (firstName.value || user.value?.firstName || '').trim()
+  return name ? name.charAt(0).toUpperCase() + name.slice(1) : ''
+})
+
+const profileLabels: Record<string, string> = {
+  tutor: 'Tutor',
+  adulto: 'Adulto',
+  tester: 'Tester',
+}
+const profileLabel = computed(() => profileLabels[profileType.value ?? ''] ?? 'Usuario')
+
+const todayLabel = computed(() => {
+  const text = new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })
+  return text.charAt(0).toUpperCase() + text.slice(1)
+})
 
 // Active navigation menu item
 const activeNav = ref('inicio')
-const searchQuery = ref('')
 const selectedTimeRange = ref('30d')
 const showUserMenu = ref(false)
 
@@ -39,25 +58,17 @@ const navItems = [
 
 // Current user display name
 const userName = computed(() => {
+  if (greetingName.value) return greetingName.value
   if (user.value?.firstName) {
     return `${user.value.firstName} ${user.value.lastName || ''}`.trim()
   }
   if (user.value?.name) return user.value.name
   if (user.value?.email) return user.value.email.split('@')[0]
-  return 'María Torres'
+  return profileLabel.value
 })
 
-// KPI Metrics
+// KPI Metrics (la primera tarjeta es la conexión a la app: AppConnectionCard)
 const metrics = [
-  {
-    id: 'students',
-    title: 'Estudiantes activos',
-    value: '128',
-    growth: '12%',
-    icon: 'pi pi-users',
-    bgColor: '#e0e7ff',
-    iconColor: '#4f46e5'
-  },
   {
     id: 'activities',
     title: 'Actividades completadas',
@@ -289,15 +300,10 @@ const calendarDays = [
     <div class="main-wrapper">
       <!-- Top Bar Header -->
       <header class="top-header">
-        <!-- Global Search Input -->
-        <div class="search-box">
-          <i class="pi pi-search search-icon"></i>
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Buscar estudiantes, actividades..."
-            class="search-input"
-          />
+        <!-- Saludo al usuario -->
+        <div class="greeting">
+          <span class="greeting-title">Hola{{ greetingName ? `, ${greetingName}` : '' }}</span>
+          <span class="greeting-date">{{ todayLabel }}</span>
         </div>
 
         <!-- Right Header Actions -->
@@ -317,11 +323,11 @@ const calendarDays = [
           <div class="user-chip-container">
             <div class="user-chip" @click="showUserMenu = !showUserMenu">
               <div class="user-avatar-wrap">
-                <img :src="womanImg" alt="María Torres" class="user-avatar-img" />
+                <img :src="womanImg" :alt="userName" class="user-avatar-img" />
               </div>
               <div class="user-details">
                 <span class="user-name">{{ userName }}</span>
-                <span class="user-role">Docente</span>
+                <span class="user-role">{{ profileLabel }}</span>
               </div>
               <i class="pi pi-chevron-down dropdown-arrow"></i>
             </div>
@@ -330,7 +336,7 @@ const calendarDays = [
             <div v-if="showUserMenu" class="user-menu-dropdown">
               <div class="dropdown-header">
                 <strong>{{ userName }}</strong>
-                <small>{{ user?.email || 'docente@vamosaprendiendo.edu' }}</small>
+                <small>{{ user?.email || profileLabel }}</small>
               </div>
               <hr class="dropdown-divider" />
               <button type="button" class="dropdown-item" @click="navigateTo('/profile-selection')">
@@ -360,6 +366,9 @@ const calendarDays = [
 
         <!-- 4 KPI Summary Cards Grid -->
         <section class="kpi-grid">
+          <!-- Estado de conexión de la app de Unity (verde = activo, rojo = inactivo) -->
+          <DashboardAppConnectionCard />
+
           <div v-for="metric in metrics" :key="metric.id" class="kpi-card">
             <div class="kpi-top">
               <div class="kpi-icon-wrap" :style="{ backgroundColor: metric.bgColor, color: metric.iconColor }">
@@ -826,6 +835,25 @@ $color-border-subtle: #e2e8f0;
 
   @media (max-width: 768px) {
     padding: 0 1rem;
+  }
+}
+
+.greeting {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+
+  .greeting-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: $color-text-dark;
+    letter-spacing: -0.01em;
+  }
+
+  .greeting-date {
+    font-size: 0.8rem;
+    color: #64748b;
   }
 }
 

@@ -2,7 +2,7 @@ export enum Role {
   ADMIN = 'admin',
   USER = 'usuario',
   TEACHER = 'profesor',
-  TEST = 'test'
+  TEST = 'test',
 }
 
 export interface User {
@@ -13,26 +13,37 @@ export interface User {
   lastName?: string
   role?: string
   hasCompletedChildSetup?: boolean
-  /** Indica si el usuario ya completó el diagnóstico inicial (persiste en backend) */
   hasCompletedSetup?: boolean
+  institutionId?: string | null
+  profileType?: ProfileType
 }
 
-export interface ChildProfile {
-  childName: string
-  documentNumber: string
-  birthDate: string | Date
-}
-
-export interface RegisterPayload {
+export interface ChildItemPayload {
   firstName: string
   lastName: string
   documentType: string
   documentNumber: string
+  birthDate: string
+  age: number
+  institutionId?: string
+  grade?: string
+}
+
+export interface RegisterPayload {
+  role?: 'usuario' | 'test' | 'profesor'
+  firstName: string
+  lastName: string
+  documentType: string
+  documentNumber: string
+  birthDate?: string
   age: number
   email: string
   phone: string
   acceptedTerms: boolean
   password: string
+  institutionId?: string
+  professionalLicense?: string
+  children?: ChildItemPayload[]
 }
 
 export interface LoginResponse {
@@ -41,51 +52,68 @@ export interface LoginResponse {
   refreshToken?: string
   expiresIn?: number
   user?: User
+  license?: {
+    plan: 'free' | 'trial' | 'pro'
+    origin: 'personal' | 'institucional'
+    daysRemaining?: number | null
+    isActive: boolean
+  }
   message?: string
-  /** Retornado directamente por el backend en la respuesta de login */
   hasCompletedSetup?: boolean
+  profileType?: ProfileType
+  profile?: {
+    firstName?: string
+    lastName?: string
+    institutionId?: string | null
+  }
+}
+
+/**
+ * Obtiene un mensaje legible a partir de un error de $fetch.
+ * NestJS puede devolver `message` como texto o como lista (errores de class-validator).
+ */
+const extractApiErrorMessage = (err: any, fallback: string): string => {
+  const message = err?.data?.message
+  if (Array.isArray(message) && message.length > 0) return message.join('. ')
+  if (typeof message === 'string' && message.trim()) return message
+  // Sin respuesta del servidor: caído, sin red o bloqueado por CORS
+  if (!err?.response) return 'No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.'
+  return fallback
 }
 
 export const useAuth = () => {
   const token = useCookie<string | null>('auth_token', {
     maxAge: 60 * 60 * 24 * 7, // 7 días
-    sameSite: 'lax'
+    sameSite: 'lax',
   })
 
   const refreshToken = useCookie<string | null>('refresh_token', {
-    maxAge: 60 * 60 * 24 * 7, // 7 días
-    sameSite: 'lax'
+    maxAge: 60 * 60 * 24 * 7,
+    sameSite: 'lax',
   })
 
   const userRole = useCookie<string | null>('user_role', {
     maxAge: 60 * 60 * 24 * 7,
-    sameSite: 'lax'
+    sameSite: 'lax',
   })
 
-  const hasChildProfile = useCookie<boolean>('has_child_profile', {
-    maxAge: 60 * 60 * 24 * 30, // 30 días
-    sameSite: 'lax'
-  })
+  // true cuando el usuario ya completó el formulario inicial (has_completed_setup en el backend)
+  const hasChildProfile = useCookie<boolean>('has_child_profile', SESSION_COOKIE_OPTIONS)
 
-  const childData = useState<ChildProfile | null>('child_profile_data', () => null)
+  // Tipo de perfil resuelto por el backend al iniciar sesión (admin, profesor, tester, tutor, adulto)
+  const profileType = useCookie<ProfileType | null>('profile_type', SESSION_COOKIE_OPTIONS)
+
+  // Nombre para el saludo de los dashboards ("Hola, Marisol"); se conserva al recargar la página
+  const firstName = useCookie<string | null>('user_first_name', SESSION_COOKIE_OPTIONS)
+
   const user = useState<User | null>('auth_user', () => null)
   const loading = useState<boolean>('auth_loading', () => false)
   const error = useState<string | null>('auth_error', () => null)
-
-  const config = useRuntimeConfig()
+  // Código HTTP del último error (ej. 409 = correo o documento ya registrado)
+  const errorStatus = useState<number | null>('auth_error_status', () => null)
 
   const isAuthenticated = computed(() => !!token.value)
   const { $api } = useNuxtApp()
-
-  /**
-   * Actualizar estado de registro del niño
-   */
-  const setChildRegistered = (status: boolean, data?: ChildProfile) => {
-    hasChildProfile.value = status
-    if (data) {
-      childData.value = data
-    }
-  }
 
   /**
    * Iniciar sesión llamando al backend (NestJS: POST /auth/login)
@@ -93,11 +121,12 @@ export const useAuth = () => {
   const login = async (email: string, password: string) => {
     loading.value = true
     error.value = null
+    errorStatus.value = null
 
     try {
       const response = await $api<LoginResponse>('/auth/login', {
         method: 'POST',
-        body: { email, password }
+        body: { email, password },
       })
 
       const authToken = response?.accessToken || response?.access_token
@@ -110,20 +139,26 @@ export const useAuth = () => {
         const userData = response.user || { email }
         user.value = userData
 
-        userRole.value = userData.role || null
+        const normalizedRole = userData.role ? userData.role.toLowerCase() : 'usuario'
+        userRole.value = normalizedRole
 
-        // Sincronizar estado de setup desde el backend (persiste entre dispositivos)
         const completedSetup = userData.hasCompletedSetup === true
         hasChildProfile.value = completedSetup
 
-        const role = userData.role ? userData.role.toLowerCase() : ''
-
-        // Redirigir al dashboard si: es staff O ya completó el diagnóstico inicial
-        if (role === Role.ADMIN || role === Role.TEACHER || completedSetup) {
-          await navigateTo('/dashboard')
-        } else {
-          await navigateTo('/profile-selection')
+        const resolvedProfile = response.profileType ?? userData.profileType
+        if (!isProfileType(resolvedProfile)) {
+          error.value = 'No pudimos identificar el tipo de tu cuenta. Contacta al administrador.'
+          token.value = null
+          refreshToken.value = null
+          return false
         }
+        profileType.value = resolvedProfile
+        firstName.value = response.profile?.firstName?.trim() || null
+        user.value = { ...userData, firstName: response.profile?.firstName, lastName: response.profile?.lastName }
+
+        // Destino según el perfil: admin → panel, profesor → su dashboard, tester → formulario,
+        // tutor/adulto → formulario solo si no lo ha completado
+        await navigateTo(resolveHomeRoute(resolvedProfile, completedSetup))
         return true
       } else {
         error.value = 'Respuesta inesperada del servidor. No se recibió el token de autenticación.'
@@ -131,7 +166,8 @@ export const useAuth = () => {
       }
     } catch (err: any) {
       console.error('Error al iniciar sesión:', err)
-      error.value = err.data?.message || err.message || 'Credenciales inválidas. Verifica tu correo y contraseña.'
+      errorStatus.value = err?.response?.status ?? null
+      error.value = extractApiErrorMessage(err, 'Credenciales inválidas. Verifica tu correo y contraseña.')
       return false
     } finally {
       loading.value = false
@@ -139,36 +175,26 @@ export const useAuth = () => {
   }
 
   /**
-   * Registrar nuevo usuario (NestJS: POST /auth/register)
+   * Registrar nuevo usuario (Tutor con N hijos, Docente o Adulto)
    */
   const register = async (userData: RegisterPayload) => {
     loading.value = true
     error.value = null
+    errorStatus.value = null
 
     try {
-      const response = await $api<LoginResponse>('/auth/register', {
+      await $api('/auth/register', {
         method: 'POST',
-        body: userData
+        body: userData,
       })
 
-      const authToken = response?.accessToken || response?.access_token
-
-      if (authToken) {
-        token.value = authToken
-        if (response.refreshToken) {
-          refreshToken.value = response.refreshToken
-        }
-        user.value = response.user || { email: userData.email, firstName: userData.firstName, lastName: userData.lastName }
-
-        // Redirigir al registro del niño
-        await navigateTo('/child-registration')
-      } else {
-        await navigateTo('/login')
-      }
+      // El registro no inicia sesión: la persona entra desde el login, donde se decide su destino
+      await navigateTo({ path: ROUTES.login, query: { registered: '1', email: userData.email } })
       return true
     } catch (err: any) {
       console.error('Error al registrar usuario:', err)
-      error.value = err.data?.message || err.message || 'No se pudo completar el registro. Verifica los datos ingresados.'
+      errorStatus.value = err?.response?.status ?? null
+      error.value = extractApiErrorMessage(err, 'No se pudo completar el registro. Verifica los datos ingresados.')
       return false
     } finally {
       loading.value = false
@@ -183,8 +209,10 @@ export const useAuth = () => {
     refreshToken.value = null
     userRole.value = null
     hasChildProfile.value = false
+    profileType.value = null
+    firstName.value = null
     user.value = null
-    await navigateTo('/login')
+    await navigateTo(ROUTES.login)
   }
 
   return {
@@ -192,14 +220,15 @@ export const useAuth = () => {
     refreshToken,
     userRole,
     user,
-    childData,
     hasChildProfile,
+    profileType,
+    firstName,
     loading,
     error,
+    errorStatus,
     isAuthenticated,
-    setChildRegistered,
     login,
     register,
-    logout
+    logout,
   }
 }

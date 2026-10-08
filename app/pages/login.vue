@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 
 // Asset imports
@@ -17,10 +17,19 @@ definePageMeta({
 })
 
 const { login, loading, error: authError } = useAuth()
+const route = useRoute()
+
+// Llegada desde el registro: se confirma la cuenta y se precarga el correo
+const justRegistered = computed(() => route.query.registered === '1')
 
 const form = reactive({
-  email: '',
+  email: typeof route.query.email === 'string' ? route.query.email : '',
   password: ''
+})
+
+// No mostrar errores de otra pantalla (el estado de error de autenticación es global)
+onMounted(() => {
+  authError.value = null
 })
 
 const handleLogin = async () => {
@@ -174,6 +183,11 @@ const handleGoogleLogin = () => {
           </div>
 
           <!-- PrimeVue Error Message -->
+          <div v-if="justRegistered && !authError" class="success-banner" role="status">
+            <i class="pi pi-check-circle"></i>
+            <span>¡Tu cuenta fue creada! Inicia sesión para continuar.</span>
+          </div>
+
           <div v-if="authError" class="error-banner">
             <i class="pi pi-exclamation-circle"></i>
             <span>{{ authError }}</span>
@@ -683,6 +697,20 @@ $border-focus: #3b50df;
   border-radius: 12px;
   color: #dc2626;
   font-size: 0.85rem;
+  margin-bottom: 1.25rem;
+}
+
+.success-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 12px;
+  color: #065f46;
+  font-size: 0.85rem;
+  font-weight: 500;
   margin-bottom: 1.25rem;
 }
 
