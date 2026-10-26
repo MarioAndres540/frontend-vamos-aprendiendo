@@ -212,6 +212,9 @@ export const useAuth = () => {
     profileType.value = null
     firstName.value = null
     user.value = null
+    // Datos de la cuenta que no deben verse si otra persona inicia sesión en el mismo navegador
+    useMyStudents().resetStudents()
+    useState('my_profile').value = null
     await navigateTo(ROUTES.login)
   }
 

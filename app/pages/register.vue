@@ -120,32 +120,10 @@ const termsSubject = computed(() =>
   profileType.value === 'tutor' ? 'datos personales de menores de edad' : 'datos personales',
 )
 
-const documentTypes = [
-  { value: 'CC', label: 'Cédula de Ciudadanía (CC)' },
-  { value: 'CE', label: 'Cédula de Extranjería (CE)' },
-  { value: 'PASAPORTE', label: 'Pasaporte (PAS)' },
-]
-
-const documentTypesKids = [
-  { value: 'TI', label: 'Tarjeta de Identidad (TI)' },
-  { value: 'RC', label: 'Registro Civil (RC)' },
-  { value: 'PASAPORTE', label: 'Pasaporte (PAS)' },
-]
-
-const schoolGrades = [
-  'Transición',
-  '1° Primaria',
-  '2° Primaria',
-  '3° Primaria',
-  '4° Primaria',
-  '5° Primaria',
-  '6° Bachillerato',
-  '7° Bachillerato',
-  '8° Bachillerato',
-  '9° Bachillerato',
-  '10° Bachillerato',
-  '11° Bachillerato',
-]
+// Listas compartidas con la vista de Configuración (app/utils/form-options.ts)
+const documentTypes = DOCUMENT_TYPES_ADULT
+const documentTypesKids = DOCUMENT_TYPES_KIDS
+const schoolGrades = SCHOOL_GRADES
 
 const todayIso = new Date().toISOString().slice(0, 10)
 

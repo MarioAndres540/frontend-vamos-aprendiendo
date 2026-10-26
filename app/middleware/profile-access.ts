@@ -32,8 +32,11 @@ export default defineNuxtRouteMiddleware((to) => {
 
   const isPersonalProfile = profile === 'tutor' || profile === 'adulto'
 
+  // El tutor sí vuelve al formulario para diagnosticar a un hijo (ej. uno recién agregado en Configuración)
+  const isForStudent = profile === 'tutor' && typeof to.query.studentId === 'string' && to.query.studentId !== ''
+
   // Tutor / adulto que ya completó el formulario no vuelve a verlo (el tester sí, siempre)
-  if (to.path === ROUTES.initialAssessment && isPersonalProfile && hasCompletedSetup) {
+  if (to.path === ROUTES.initialAssessment && isPersonalProfile && hasCompletedSetup && !isForStudent) {
     return navigateTo(ROUTES.userDashboard)
   }
 

@@ -18,6 +18,23 @@ definePageMeta({
 const { profileType } = useAuth()
 const { kidsQuestions, adultsQuestions, submitAssessment, loading, error, lastResult } = useAssessment()
 
+// Formulario de un hijo concreto (?studentId=…): al agregarlo en Configuración o si quedó pendiente
+const route = useRoute()
+const studentId = computed(() =>
+  profileType.value === 'tutor' && typeof route.query.studentId === 'string' && route.query.studentId
+    ? route.query.studentId
+    : null,
+)
+const { selectStudent, selectError } = useMyStudents()
+const studentName = ref<string | null>(null)
+
+onMounted(async () => {
+  if (!studentId.value) return
+  // Trae al estudiante (y lo deja seleccionado para verlo en el dashboard al terminar)
+  const student = await selectStudent(studentId.value)
+  if (student) studentName.value = titleCase(`${student.firstName} ${student.lastName}`)
+})
+
 // Versión según el perfil: tutor → niños, adulto → memoria y prevención. Solo el tester puede elegir.
 const fixedTarget = computed(() => assessmentTargetFor(profileType.value))
 const canChooseTarget = computed(() => fixedTarget.value === null)
@@ -82,7 +99,7 @@ const handleFinalSubmit = async () => {
     score: answersMap.value[q.id] || 1,
   }))
 
-  const result = await submitAssessment(selectedTarget.value, payloadAnswers)
+  const result = await submitAssessment(selectedTarget.value, payloadAnswers, studentId.value ?? undefined)
   if (result) {
     showResultsModal.value = true
   }
@@ -113,7 +130,10 @@ const likertOptions = [
           <img :src="avatarImg" alt="Vamos Aprendiendo" class="brand-logo" />
           <div>
             <h1 class="brand-title">Diagnóstico y Evaluación Inicial</h1>
-            <p class="brand-subtitle">Adaptación del plan de aprendizaje personalizado</p>
+            <p v-if="studentId" class="brand-subtitle">
+              Formulario de <strong>{{ studentName ?? 'tu hijo o menor' }}</strong>
+            </p>
+            <p v-else class="brand-subtitle">Adaptación del plan de aprendizaje personalizado</p>
           </div>
         </div>
 
@@ -139,6 +159,11 @@ const likertOptions = [
           </button>
         </div>
       </header>
+
+      <p v-if="studentId && selectError" class="error-msg student-error" role="alert">
+        <i class="pi pi-exclamation-circle mr-1"></i> {{ selectError }}
+        <NuxtLink to="/settings">Volver a Configuración</NuxtLink>
+      </p>
 
       <!-- Barra de Progreso -->
       <div class="progress-section">
@@ -226,7 +251,13 @@ const likertOptions = [
           <i class="pi pi-verified"></i>
         </div>
         <h3 class="results-title">¡Evaluación Inicial Completada!</h3>
-        <p class="results-subtitle">Tu perfil pedagógico ha sido configurado con éxito.</p>
+        <p class="results-subtitle">
+          {{
+            studentId
+              ? `El perfil pedagógico de ${studentName ?? 'tu hijo o menor'} ha sido configurado con éxito.`
+              : 'Tu perfil pedagógico ha sido configurado con éxito.'
+          }}
+        </p>
 
         <div class="results-summary-box">
           <div class="summary-item">
@@ -520,6 +551,18 @@ const likertOptions = [
   font-weight: 600;
   font-size: 0.88rem;
   margin-bottom: 1rem;
+}
+
+// Estudiante del formulario no encontrado (?studentId= de otra cuenta o eliminado)
+.student-error {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 14px;
+  padding: 0.75rem 1rem;
+
+  a {
+    margin-left: 0.5rem;
+    color: #4f46e5;
+  }
 }
 
 // Modal de Resultados

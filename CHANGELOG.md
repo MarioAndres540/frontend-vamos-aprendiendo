@@ -6,6 +6,30 @@ Todos los cambios notables realizados en este proyecto se documentarán en este 
 
 ## [Unreleased]
 
+#### ⚙️ Configuración, menú de la cuenta e hijos a cargo (2026-10-25)
+- **Layout compartido `layouts/user-panel.vue`**: el menú lateral, el saludo y el menú de la cuenta salieron de `dashboard.vue` y ahora los usan `/dashboard` y `/settings`. El enlace activo del menú se calcula según la ruta.
+  - En tablet y celular (≤ 1024 px), donde el menú lateral se oculta, aparece un **menú horizontal** bajo el encabezado (antes no había forma de navegar en esos tamaños).
+- **Menú de la cuenta**: se quitaron "Cambiar Perfil" y "Diagnóstico". Quedan los **hijos a cargo** (solo tutor) y **Cerrar sesión**. Al elegir un hijo se consulta `GET /students/:id` y la tarjeta "Tutor de" del dashboard muestra su información; el hijo elegido se recuerda en la cookie `selected_student_id`. El menú se cierra al hacer clic fuera o con Escape.
+- **Nueva vista `/settings`** (menú "Configuración"; perfiles tutor, adulto y tester):
+  - **Mis datos**: nombres, apellidos, tipo y número de documento, teléfono y correo. Se pueden cambiar el **tipo de documento**, el **teléfono** y el **correo** (este último pide la contraseña actual).
+  - **Hijos o menores a cargo** (tutor): nombres, apellidos, documento, grado, edad, colegio y estado del formulario inicial, con acceso a "Hacer formulario" si está pendiente.
+  - **Agregar hijo o menor**: nombres, apellidos, tipo y número de documento, fecha de nacimiento (edad automática, entre 3 y 17 años), grado y colegio. Al guardar se pasa al **formulario inicial de ese menor**.
+- **Formulario inicial por hijo**: `/initial-assessment?studentId=…` muestra "Formulario de {nombre}" y envía el `studentId` a `POST /assessments`. El middleware `profile-access` deja entrar al tutor aunque ya haya completado su primer formulario cuando la URL trae `studentId`.
+- La tarjeta "Tutor de" ya no tiene pestañas propias: muestra el hijo elegido en el menú de la cuenta y ofrece "Hacer formulario inicial" si le falta.
+- Composables: `useMyStudents` (estado compartido: lista, hijo seleccionado, `selectStudent`, `createStudent`) y `useProfile` (`GET/PATCH /profile/me`, `PATCH /profile/me/email`). Al cerrar sesión se limpian los hijos y el perfil cargados.
+- Utilidades compartidas: `utils/form-options.ts` (tipos de documento, grados y cálculo de edad; `register.vue` ahora las usa) y `utils/text.ts` (nombres con mayúscula inicial e iniciales del avatar).
+
+#### 👨‍👧 Dashboard del tutor / adulto: sin elementos de profesor (2026-10-25)
+- Se quitó **"Estudiantes"** del menú lateral y la acción rápida **"Gestionar Estudiantes"**: la gestión de estudiantes es del profesor (`/teacher/dashboard`).
+- **"Perfil destacado"** (Sofía Ramírez, XP y nivel de ejemplo) se reemplazó por `components/dashboard/ProfileSummaryCard.vue`:
+  - **Tutor**: tarjeta "Tutor de" con cada hijo (nombre, grado, edad y colegio) y su formulario inicial: nivel de alerta, área de enfoque, **Fortalezas** y **A mejorar**. Si tiene varios hijos, aparece un selector.
+  - **Adulto / tester**: tarjeta "Mi perfil" con su propio formulario inicial.
+- Composables `useMyStudents` (`GET /students/mine`) y `useMyLatestAssessment` (`GET /assessments/history`).
+- `app/utils/assessment-areas.ts`: nombres de cada dimensión del formulario y cálculo de fortalezas (promedio ≤ 2) y áreas a mejorar (≥ 3, máximo 2 de cada una). En empates va primero la condición principal calculada por el backend, para que coincida con el nivel de alerta.
+- Acciones rápidas: con un número impar de acciones, la última ocupa toda la fila (al quitar "Gestionar Estudiantes" quedaban 3 y la última se veía a media anchura).
+- Se eliminaron los estilos de la tarjeta "Perfil destacado" (`.profile-spotlight-card`, XP y chips) que ya no se usan.
+- Datos esperados para la tutora de prueba (`marisolvice@gmail.com`): Matías, 2° Primaria · 7 años, sin colegio, alerta moderada con enfoque en Matemáticas; fortalezas Autocontrol y Trazo y escritura; a mejorar Atención y Matemáticas.
+
 #### 📡 Dashboard del tutor / adulto: conexión a la app de Unity
 - **Encabezado**: "Hola, {nombre}" con la fecha del día, en lugar del buscador sin función. La etiqueta del usuario muestra su perfil real (Tutor / Adulto / Tester) y no "Docente". El nombre se guarda al iniciar sesión en la cookie `user_first_name` (se borra al cerrar sesión).
 - **Tarjeta "Conexión a la app"** (`components/dashboard/AppConnectionCard.vue`), en lugar de "Estudiantes activos":
@@ -109,11 +133,13 @@ Todos los cambios notables realizados en este proyecto se documentarán en este 
    - Al iniciar con Google, guardar `profile_type` y redirigir con `resolveHomeRoute()`, igual que `login()`.
 5. **Acciones del panel de administración** (`/admin`): hoy es de solo lectura. Agregar interfaz para las acciones que el backend ya ofrece: editar datos, rol o estado (`PATCH /admin/users/:id`), cambiar correo, extender la prueba de testers y eliminar usuarios.
 6. ✅ **Inicio de sesión del estudiante** (decisiones del 2026-10-07 y 2026-10-08): el niño no tiene cuenta propia; usa la cuenta de su tutor (o el adulto la suya) en la app de Unity y en la web, y puede estar abierta en ambas a la vez sin restricción. Esos son los perfiles que ya maneja `profile-routes.ts`. No hay trabajo pendiente en el frontend; los detalles de Unity están en `backend/CHANGELOG.md` (pendiente #5).
-7. **Páginas del flujo anterior**: `profile-selection.vue` y `child-registration.vue` siguen usando el middleware `auth` y no forman parte del flujo nuevo (el registro de hijos ya está en `register.vue`). Revisar si se eliminan o se integran, y quitar sus enlaces del menú de `dashboard.vue`.
-8. **Dashboard de usuarios (`dashboard.vue`)** — ✅ el saludo, la etiqueta de perfil y la tarjeta de conexión a la app ya están (ver `[Unreleased]`). **Pendiente**: construir las demás tarjetas (actividades, tiempo de juego, precisión, rendimiento por área, perfil destacado, etc.) con la información del formulario inicial (`initial_assessments`) y luego con la telemetría de Unity. Antecedentes del reporte original: **muestra "Docente" a tutores y adultos** (reportado el 2026-10-07 al probar con la tutora `marisolvice@gmail.com`):
+7. **Páginas del flujo anterior**: `profile-selection.vue` y `child-registration.vue` siguen usando el middleware `auth` y no forman parte del flujo nuevo (el registro de hijos ya está en `register.vue`). Revisar si se eliminan o se integran, y quitar sus enlaces del menú de `dashboard.vue`. (2026-10-25: ya se quitaron "Estudiantes", "Gestionar Estudiantes" y, del menú de la cuenta, "Cambiar Perfil" y "Diagnóstico"; siguen "Diagnósticos" en el menú lateral y "Nuevo Diagnóstico" en acciones rápidas → `/child-registration`.)
+7b. **Formulario inicial por hijo**: ✅ los hijos agregados desde Configuración y los que tienen el formulario pendiente ya se diagnostican con `?studentId=`. Pendiente: el formulario del primer inicio de sesión (después del registro) aún no pregunta de qué hijo es; con varios hijos registrados a la vez queda sin asignar.
+7c. **Menú "Diagnósticos"**: decidir a dónde lleva (hoy `/child-registration`, del flujo anterior). Una opción es una vista con el estado del formulario de cada hijo, que ya existe en Configuración.
+8. **Dashboard de usuarios (`dashboard.vue`)** — ✅ el saludo, la etiqueta de perfil, la tarjeta de conexión a la app y la tarjeta "Tutor de" / "Mi perfil" ya están (ver `[Unreleased]`). **Pendiente**: construir las demás tarjetas (actividades, tiempo de juego, precisión, rendimiento por área, progreso por ruta, actividad reciente, etc.) con la información del formulario inicial (`initial_assessments`) y luego con la telemetría de Unity. Antecedentes del reporte original: **muestra "Docente" a tutores y adultos** (reportado el 2026-10-07 al probar con la tutora `marisolvice@gmail.com`):
    - **Verificado en la base**: la cuenta es correcta. Rol `usuario`, tutora de Matías Villegas Ceballos (`tutor_students`), sin registro en `teachers`, formulario de niños completado. El login la envió a `/dashboard` como corresponde.
    - **Causa**: la etiqueta de rol del encabezado está fija en el código (`dashboard.vue:326`, `<span class="user-role">Docente</span>`), y el correo de respaldo es `docente@vamosaprendiendo.edu` (línea 335).
-   - **Además**: el contenido de la página está pensado para un docente (128 estudiantes activos, menú "Estudiantes" y "Diagnósticos", acción "Nuevo Diagnóstico", "Gestionar Estudiantes") y todo son datos de ejemplo.
+   - **Además**: el contenido de la página está pensado para un docente (128 estudiantes activos, menú "Estudiantes" y "Diagnósticos", acción "Nuevo Diagnóstico", "Gestionar Estudiantes") y todo son datos de ejemplo. (2026-10-25: resuelto "Estudiantes", "Gestionar Estudiantes" y "Perfil destacado"; la actividad reciente sigue con nombres de ejemplo: Sofía, Mateo, Lucía, Daniel.)
    - **Por hacer**:
      - Mostrar el perfil real (`profile_type`: Tutor / Adulto / Tester) y el nombre del usuario.
      - Adaptar el contenido: el tutor ve a sus hijos y el progreso de cada uno; el adulto ve sus propias actividades de memoria y atención.
