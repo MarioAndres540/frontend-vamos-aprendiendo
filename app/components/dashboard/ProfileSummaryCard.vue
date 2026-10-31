@@ -9,6 +9,7 @@ const isTutor = computed(() => profileType.value === 'tutor')
 
 const {
   students,
+  loaded: studentsLoaded,
   selected,
   selectingId,
   loading: studentsLoading,
@@ -20,8 +21,13 @@ const { assessment: ownAssessment, loading: ownLoading, error: ownError, fetchLa
 // force: al volver al dashboard (ej. después de llenar el formulario de un hijo) se trae la información actualizada
 onMounted(() => (isTutor.value ? fetchStudents(true) : fetchLatest()))
 
+// Hasta la primera carga de la lista no se sabe si el tutor tiene hijos (evita "Aún no tienes…" por un instante)
 const loading = computed(() =>
-  isTutor.value ? (studentsLoading.value && !selected.value) || selectingId.value !== null : ownLoading.value,
+  isTutor.value
+    ? (!studentsLoaded.value && !studentsError.value) ||
+      (studentsLoading.value && !selected.value) ||
+      selectingId.value !== null
+    : ownLoading.value,
 )
 const error = computed(() => (isTutor.value ? studentsError.value : ownError.value))
 

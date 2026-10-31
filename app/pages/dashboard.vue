@@ -15,6 +15,10 @@ import boyImg from '~/assets/img/boy.png'
 // El menú lateral, el saludo y el menú de la cuenta están en layouts/user-panel.vue
 definePageMeta({
   layout: 'user-panel',
+  // El título va centrado en el encabezado del layout (antes ocupaba una fila propia sobre las tarjetas)
+  headerTitle: 'Panel de Progreso',
+  headerSubtitle: 'Resumen general del aprendizaje',
+  showsSelectedStudent: true,
   middleware: 'profile-access',
   allowedProfiles: ['tutor', 'adulto', 'tester'],
 })
@@ -167,27 +171,27 @@ const recentActivities = [
 const quickActions = [
   {
     id: 'diag',
-    label: 'Nuevo Diagnóstico',
+    label: 'Ver Diagnóstico',
     icon: 'pi pi-clipboard',
     bgColor: '#f5f3ff',
     color: '#7c3aed',
-    route: '/child-registration'
+    route: '/diagnostics'
   },
   {
     id: 'act',
-    label: 'Crear Actividad',
+    label: 'Ver Actividades',
     icon: 'pi pi-play',
     bgColor: '#f0fdf4',
     color: '#16a34a',
-    route: '#'
+    route: '/activities'
   },
   {
-    id: 'export',
-    label: 'Exportar Reporte',
-    icon: 'pi pi-download',
+    id: 'analytics',
+    label: 'Ver Analíticas',
+    icon: 'pi pi-chart-bar',
     bgColor: '#f8fafc',
     color: '#475569',
-    route: '#'
+    route: '/analytics'
   }
 ]
 
@@ -206,14 +210,6 @@ const calendarDays = [
 
 <template>
   <main class="dashboard-body">
-    <!-- Page Title Header -->
-    <div class="page-title-row">
-      <div>
-        <h1 class="page-title">Panel de Progreso</h1>
-        <p class="page-subtitle">Resumen general del aprendizaje</p>
-      </div>
-    </div>
-
     <!-- 4 KPI Summary Cards Grid -->
     <section class="kpi-grid">
       <!-- Estado de conexión de la app de Unity (verde = activo, rojo = inactivo) -->
@@ -488,22 +484,6 @@ $color-border-subtle: #e2e8f0;
 
   @media (max-width: 768px) {
     padding: 1rem 1rem 2rem;
-  }
-}
-
-.page-title-row {
-  .page-title {
-    font-size: 1.65rem;
-    font-weight: 800;
-    color: $color-text-dark;
-    margin: 0 0 0.25rem 0;
-    letter-spacing: -0.02em;
-  }
-
-  .page-subtitle {
-    font-size: 0.92rem;
-    color: $color-text-muted;
-    margin: 0;
   }
 }
 

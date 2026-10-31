@@ -12,14 +12,20 @@ const isTutor = computed(() => profileType.value === 'tutor')
 // Sin "Estudiantes": la gestión de estudiantes es del profesor (/teacher/dashboard)
 const navItems = [
   { id: 'inicio', label: 'Inicio', icon: 'pi pi-home', route: '/dashboard' },
-  { id: 'diagnosticos', label: 'Diagnósticos', icon: 'pi pi-clipboard', route: '/child-registration' },
-  { id: 'actividades', label: 'Actividades', icon: 'pi pi-play', route: '#' },
-  { id: 'analiticas', label: 'Analíticas', icon: 'pi pi-chart-bar', route: '#' },
-  { id: 'biblioteca', label: 'Biblioteca', icon: 'pi pi-book', route: '#' },
+  { id: 'diagnosticos', label: 'Diagnósticos', icon: 'pi pi-clipboard', route: '/diagnostics' },
+  { id: 'actividades', label: 'Actividades', icon: 'pi pi-play', route: '/activities' },
+  { id: 'analiticas', label: 'Analíticas', icon: 'pi pi-chart-bar', route: '/analytics' },
+  { id: 'biblioteca', label: 'Biblioteca', icon: 'pi pi-book', route: '/library' },
   { id: 'configuracion', label: 'Configuración', icon: 'pi pi-cog', route: '/settings' },
 ]
 
-const isActive = (item: (typeof navItems)[number]) => item.route !== '#' && route.path === item.route
+// Activo también en las subpáginas (ej. /library/atencion-en-casa)
+const isActive = (item: (typeof navItems)[number]) =>
+  route.path === item.route || route.path.startsWith(`${item.route}/`)
+
+// Título de la página (definePageMeta: headerTitle / headerSubtitle), centrado en el encabezado
+const headerTitle = computed(() => route.meta.headerTitle)
+const headerSubtitle = computed(() => route.meta.headerSubtitle)
 
 const greetingName = computed(() => titleCase(firstName.value || user.value?.firstName || ''))
 
@@ -66,12 +72,13 @@ onBeforeUnmount(() => {
 
 const childLabel = (s: { firstName: string; lastName: string }) => titleCase(`${s.firstName} ${s.lastName}`)
 
-// Al elegir un hijo se trae su información del backend y se muestra en el dashboard
+// Al elegir un hijo se trae su información del backend. Las páginas que muestran al hijo elegido
+// (dashboard, diagnósticos) se actualizan en su lugar; desde las demás se va al dashboard.
 const onSelectStudent = async (id: string) => {
   const student = await selectStudent(id)
   if (!student) return
   showUserMenu.value = false
-  if (route.path !== ROUTES.userDashboard) await navigateTo(ROUTES.userDashboard)
+  if (!route.meta.showsSelectedStudent) await navigateTo(ROUTES.userDashboard)
 }
 </script>
 
@@ -115,6 +122,11 @@ const onSelectStudent = async (id: string) => {
         <div class="greeting">
           <span class="greeting-title">Hola{{ greetingName ? `, ${greetingName}` : '' }}</span>
           <span class="greeting-date">{{ todayLabel }}</span>
+        </div>
+
+        <div v-if="headerTitle" class="header-title">
+          <h1>{{ headerTitle }}</h1>
+          <p v-if="headerSubtitle">{{ headerSubtitle }}</p>
         </div>
 
         <div class="header-right">
@@ -200,6 +212,12 @@ const onSelectStudent = async (id: string) => {
           <span>{{ item.label }}</span>
         </NuxtLink>
       </nav>
+
+      <!-- En pantallas angostas el título no cabe en el encabezado: va aquí, sobre el contenido -->
+      <div v-if="headerTitle" class="mobile-title">
+        <h1 class="mobile-title-text">{{ headerTitle }}</h1>
+        <span v-if="headerSubtitle" class="mobile-subtitle">{{ headerSubtitle }}</span>
+      </div>
 
       <slot />
     </div>
@@ -352,13 +370,14 @@ $color-border-subtle: #e2e8f0;
   min-width: 0;
 }
 
+// Tres columnas (saludo | título | acciones): con 1fr a cada lado el título queda centrado en la barra
 .top-header {
   height: 72px;
   background-color: #ffffff;
   border-bottom: 1px solid $color-border-subtle;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
   padding: 0 2rem;
   position: sticky;
@@ -392,11 +411,65 @@ $color-border-subtle: #e2e8f0;
   }
 }
 
+.header-title {
+  grid-column: 2;
+  text-align: center;
+  line-height: 1.2;
+
+  h1 {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: $color-text-dark;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+
+  p {
+    margin: 0.1rem 0 0;
+    font-size: 0.8rem;
+    color: $color-text-muted;
+    white-space: nowrap;
+  }
+
+  // Sin espacio para el título entre el saludo y las acciones: pasa a .mobile-title
+  @media (max-width: 1100px) {
+    display: none;
+  }
+}
+
 .header-right {
+  grid-column: 3;
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: 0.85rem;
   flex-shrink: 0;
+}
+
+.mobile-title {
+  display: none;
+
+  @media (max-width: 1100px) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1rem 1rem 0;
+  }
+
+  .mobile-title-text {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: $color-text-dark;
+    letter-spacing: -0.02em;
+  }
+
+  .mobile-subtitle {
+    font-size: 0.8rem;
+    color: $color-text-muted;
+  }
 }
 
 .icon-button {

@@ -140,41 +140,55 @@ export const useMyStudents = () => {
   }
 }
 
+// GET /assessments/history responde las filas de initial_assessments tal cual (snake_case)
+const mapAssessmentRow = (row: any): StudentAssessmentSummary => ({
+  id: row.id,
+  targetType: row.target_type,
+  totalScore: row.total_score,
+  maxScore: row.max_score,
+  riskLevel: row.risk_level,
+  primaryCondition: row.primary_condition ?? null,
+  recommendations: row.recommendations ?? null,
+  answers: Array.isArray(row.answers) ? row.answers : [],
+  createdAt: row.created_at,
+})
+
 /**
- * Último formulario inicial que llenó el propio usuario (GET /assessments/history). Para adultos y testers.
+ * Formularios iniciales, del más reciente al más antiguo (GET /assessments/history).
+ * Con studentId: los de ese hijo (el backend verifica que sea de la cuenta); sin él: los que llenó el usuario.
  */
-export const useMyLatestAssessment = () => {
+export const useAssessmentHistory = () => {
   const { $api } = useNuxtApp()
-  const assessment = ref<StudentAssessmentSummary | null>(null)
+  const history = ref<StudentAssessmentSummary[]>([])
   const loading = ref(false)
+  // true después de la primera respuesta (con o sin error)
+  const loaded = ref(false)
   const error = ref<string | null>(null)
 
-  const fetchLatest = async () => {
+  const fetchHistory = async (studentId?: string) => {
     loading.value = true
     error.value = null
     try {
-      // El backend responde las filas de initial_assessments, de la más reciente a la más antigua
-      const rows = await $api<any[]>('/assessments/history')
-      const row = rows[0]
-      assessment.value = row
-        ? {
-            id: row.id,
-            targetType: row.target_type,
-            totalScore: row.total_score,
-            maxScore: row.max_score,
-            riskLevel: row.risk_level,
-            primaryCondition: row.primary_condition ?? null,
-            recommendations: row.recommendations ?? null,
-            answers: Array.isArray(row.answers) ? row.answers : [],
-            createdAt: row.created_at,
-          }
-        : null
+      const rows = await $api<any[]>('/assessments/history', { query: studentId ? { studentId } : undefined })
+      history.value = rows.map(mapAssessmentRow)
     } catch (err: any) {
-      error.value = err?.data?.message || 'No pudimos cargar tu formulario inicial. Intenta de nuevo.'
+      history.value = []
+      error.value = apiErrorMessage(err, 'No pudimos cargar el historial de formularios. Intenta de nuevo.')
     } finally {
       loading.value = false
+      loaded.value = true
     }
   }
 
-  return { assessment, loading, error, fetchLatest }
+  return { history, loading, loaded, error, fetchHistory }
+}
+
+/**
+ * Último formulario inicial que llenó el propio usuario. Para adultos y testers.
+ */
+export const useMyLatestAssessment = () => {
+  const { history, loading, loaded, error, fetchHistory } = useAssessmentHistory()
+  const assessment = computed(() => history.value[0] ?? null)
+  const fetchLatest = () => fetchHistory()
+  return { assessment, loading, loaded, error, fetchLatest }
 }

@@ -8,7 +8,14 @@ definePageMeta({
 
 const { profileType } = useAuth()
 const { profile, loading: profileLoading, error: profileError, fetchProfile, updateProfile, updateEmail } = useProfile()
-const { students, loading: studentsLoading, error: studentsError, fetchStudents, createStudent } = useMyStudents()
+const {
+  students,
+  loaded: studentsLoaded,
+  loading: studentsLoading,
+  error: studentsError,
+  fetchStudents,
+  createStudent,
+} = useMyStudents()
 const { institutions, fetchInstitutions } = useInstitutions()
 
 const isTutor = computed(() => profileType.value === 'tutor')
@@ -179,6 +186,34 @@ const submitChild = async () => {
   }
 }
 
+// ----------------------------------------------------
+// Carrusel de hijos (solo lo mueve el usuario, sin avance automático)
+// ----------------------------------------------------
+const currentIndex = ref(0)
+const slideDirection = ref<'next' | 'prev'>('next')
+const current = computed(() => students.value[currentIndex.value] ?? null)
+const hasPrev = computed(() => currentIndex.value > 0)
+const hasNext = computed(() => currentIndex.value < students.value.length - 1)
+
+const showPrev = () => {
+  if (!hasPrev.value) return
+  slideDirection.value = 'prev'
+  currentIndex.value--
+}
+const showNext = () => {
+  if (!hasNext.value) return
+  slideDirection.value = 'next'
+  currentIndex.value++
+}
+
+// Si la lista se acorta (ej. al recargarla) el índice no puede quedar fuera de rango
+watch(
+  () => students.value.length,
+  (length) => {
+    if (currentIndex.value > length - 1) currentIndex.value = Math.max(0, length - 1)
+  },
+)
+
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })
 </script>
@@ -196,249 +231,291 @@ const formatDate = (iso: string) =>
       <i class="pi pi-check-circle"></i> {{ notice }}
     </p>
 
-    <!-- Mis datos -->
-    <section class="settings-card" aria-labelledby="my-data-title">
-      <h2 id="my-data-title" class="card-title">Mis datos</h2>
+    <!-- Mis datos y, al frente, los hijos o menores a cargo (en pantallas angostas, una debajo de la otra) -->
+    <div class="settings-grid" :class="{ single: !isTutor }">
+      <section class="settings-card" aria-labelledby="my-data-title">
+        <h2 id="my-data-title" class="card-title">Mis datos</h2>
 
-      <p v-if="profileLoading && !profile" class="muted">Cargando tus datos…</p>
-      <p v-else-if="profileError && !profile" class="error">{{ profileError }}</p>
+        <p v-if="profileLoading && !profile" class="muted">Cargando tus datos…</p>
+        <p v-else-if="profileError && !profile" class="error">{{ profileError }}</p>
 
-      <dl v-else-if="profile" class="data-grid">
-        <div class="data-item">
-          <dt>Nombres</dt>
-          <dd>{{ titleCase(profile.firstName) || '—' }}</dd>
-        </div>
-        <div class="data-item">
-          <dt>Apellidos</dt>
-          <dd>{{ titleCase(profile.lastName) || '—' }}</dd>
-        </div>
+        <dl v-else-if="profile" class="data-grid">
+          <div class="data-item">
+            <dt>Nombres</dt>
+            <dd>{{ titleCase(profile.firstName) || '—' }}</dd>
+          </div>
+          <div class="data-item">
+            <dt>Apellidos</dt>
+            <dd>{{ titleCase(profile.lastName) || '—' }}</dd>
+          </div>
 
-        <!-- Tipo de documento (editable) -->
-        <div class="data-item">
-          <dt>Tipo de documento</dt>
-          <dd v-if="editing !== 'documentType'" class="with-action">
-            <span>{{ documentTypeLabel(profile.documentType) }}</span>
-            <button type="button" class="link-button" :disabled="editing !== null" @click="startEdit('documentType')">
-              Cambiar
-            </button>
-          </dd>
-          <dd v-else>
-            <form class="inline-form" @submit.prevent="saveField">
-              <label class="sr-only" for="edit-document-type">Tipo de documento</label>
-              <select id="edit-document-type" v-model="edit.documentType" class="field-input">
-                <option v-for="t in adultDocumentTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
-              </select>
-              <div class="form-actions">
-                <button type="submit" class="btn-primary" :disabled="saving">
-                  <i v-if="saving" class="pi pi-spin pi-spinner"></i> Guardar
-                </button>
-                <button type="button" class="btn-secondary" :disabled="saving" @click="cancelEdit">Cancelar</button>
-              </div>
-              <p v-if="fieldError" class="error" role="alert">{{ fieldError }}</p>
-            </form>
-          </dd>
-        </div>
+          <!-- Tipo de documento (editable) -->
+          <div class="data-item">
+            <dt>Tipo de documento</dt>
+            <dd v-if="editing !== 'documentType'" class="with-action">
+              <span>{{ documentTypeLabel(profile.documentType) }}</span>
+              <button type="button" class="link-button" :disabled="editing !== null" @click="startEdit('documentType')">
+                Cambiar
+              </button>
+            </dd>
+            <dd v-else>
+              <form class="inline-form" @submit.prevent="saveField">
+                <label class="sr-only" for="edit-document-type">Tipo de documento</label>
+                <select id="edit-document-type" v-model="edit.documentType" class="field-input">
+                  <option v-for="t in adultDocumentTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
+                </select>
+                <div class="form-actions">
+                  <button type="submit" class="btn-primary" :disabled="saving">
+                    <i v-if="saving" class="pi pi-spin pi-spinner"></i> Guardar
+                  </button>
+                  <button type="button" class="btn-secondary" :disabled="saving" @click="cancelEdit">Cancelar</button>
+                </div>
+                <p v-if="fieldError" class="error" role="alert">{{ fieldError }}</p>
+              </form>
+            </dd>
+          </div>
 
-        <div class="data-item">
-          <dt>Número de documento</dt>
-          <dd>{{ profile.documentNumber || '—' }}</dd>
-        </div>
+          <div class="data-item">
+            <dt>Número de documento</dt>
+            <dd>{{ profile.documentNumber || '—' }}</dd>
+          </div>
 
-        <!-- Teléfono (editable) -->
-        <div class="data-item">
-          <dt>Teléfono</dt>
-          <dd v-if="editing !== 'phone'" class="with-action">
-            <span>{{ profile.phone || '—' }}</span>
-            <button type="button" class="link-button" :disabled="editing !== null" @click="startEdit('phone')">
-              Cambiar
-            </button>
-          </dd>
-          <dd v-else>
-            <form class="inline-form" @submit.prevent="saveField">
-              <label class="sr-only" for="edit-phone">Teléfono</label>
-              <input
-                id="edit-phone"
-                v-model="edit.phone"
-                class="field-input"
-                type="tel"
-                inputmode="tel"
-                autocomplete="tel"
-                placeholder="3001234567"
-              />
-              <div class="form-actions">
-                <button type="submit" class="btn-primary" :disabled="saving">
-                  <i v-if="saving" class="pi pi-spin pi-spinner"></i> Guardar
-                </button>
-                <button type="button" class="btn-secondary" :disabled="saving" @click="cancelEdit">Cancelar</button>
-              </div>
-              <p v-if="fieldError" class="error" role="alert">{{ fieldError }}</p>
-            </form>
-          </dd>
-        </div>
-
-        <!-- Correo (editable, con contraseña) -->
-        <div class="data-item wide">
-          <dt>Correo</dt>
-          <dd v-if="editing !== 'email'" class="with-action">
-            <span class="break">{{ profile.email }}</span>
-            <button type="button" class="link-button" :disabled="editing !== null" @click="startEdit('email')">
-              Cambiar
-            </button>
-          </dd>
-          <dd v-else>
-            <form class="inline-form" @submit.prevent="saveField">
-              <div class="field">
-                <label for="edit-email">Correo nuevo</label>
-                <input id="edit-email" v-model="edit.email" class="field-input" type="email" autocomplete="email" />
-              </div>
-              <div class="field">
-                <label for="edit-password">Contraseña actual</label>
+          <!-- Teléfono (editable) -->
+          <div class="data-item">
+            <dt>Teléfono</dt>
+            <dd v-if="editing !== 'phone'" class="with-action">
+              <span>{{ profile.phone || '—' }}</span>
+              <button type="button" class="link-button" :disabled="editing !== null" @click="startEdit('phone')">
+                Cambiar
+              </button>
+            </dd>
+            <dd v-else>
+              <form class="inline-form" @submit.prevent="saveField">
+                <label class="sr-only" for="edit-phone">Teléfono</label>
                 <input
-                  id="edit-password"
-                  v-model="edit.currentPassword"
+                  id="edit-phone"
+                  v-model="edit.phone"
                   class="field-input"
-                  type="password"
-                  autocomplete="current-password"
+                  type="tel"
+                  inputmode="tel"
+                  autocomplete="tel"
+                  placeholder="3001234567"
                 />
-                <small class="hint">La pedimos para confirmar que eres tú.</small>
-              </div>
-              <div class="form-actions">
-                <button type="submit" class="btn-primary" :disabled="saving">
-                  <i v-if="saving" class="pi pi-spin pi-spinner"></i> Cambiar correo
-                </button>
-                <button type="button" class="btn-secondary" :disabled="saving" @click="cancelEdit">Cancelar</button>
-              </div>
-              <p v-if="fieldError" class="error" role="alert">{{ fieldError }}</p>
-            </form>
-          </dd>
-        </div>
-      </dl>
-    </section>
-
-    <!-- Hijos o menores a cargo (solo tutor) -->
-    <section v-if="isTutor" class="settings-card" aria-labelledby="children-title">
-      <div class="card-header-row">
-        <h2 id="children-title" class="card-title">Hijos o menores a cargo</h2>
-        <button v-if="!showAddForm" type="button" class="btn-primary" @click="openAddForm">
-          <i class="pi pi-plus"></i> Agregar hijo o menor
-        </button>
-      </div>
-
-      <p v-if="studentsLoading && students.length === 0" class="muted">Cargando…</p>
-      <p v-else-if="studentsError && students.length === 0" class="error">{{ studentsError }}</p>
-      <p v-else-if="students.length === 0" class="muted">Aún no tienes hijos o menores registrados.</p>
-
-      <ul v-else class="children-list">
-        <li v-for="s in students" :key="s.id" class="child-card">
-          <div class="child-head">
-            <span class="child-avatar" aria-hidden="true">{{ initials(titleCase(`${s.firstName} ${s.lastName}`)) }}</span>
-            <div class="child-title">
-              <h3>{{ titleCase(`${s.firstName} ${s.lastName}`) }}</h3>
-              <span>{{ [s.grade, s.age != null ? `${s.age} años` : null].filter(Boolean).join(' · ') }}</span>
-            </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn-primary" :disabled="saving">
+                    <i v-if="saving" class="pi pi-spin pi-spinner"></i> Guardar
+                  </button>
+                  <button type="button" class="btn-secondary" :disabled="saving" @click="cancelEdit">Cancelar</button>
+                </div>
+                <p v-if="fieldError" class="error" role="alert">{{ fieldError }}</p>
+              </form>
+            </dd>
           </div>
 
-          <dl class="data-grid compact">
-            <div class="data-item">
-              <dt>Nombres</dt>
-              <dd>{{ titleCase(s.firstName) }}</dd>
-            </div>
-            <div class="data-item">
-              <dt>Apellidos</dt>
-              <dd>{{ titleCase(s.lastName) }}</dd>
-            </div>
-            <div class="data-item">
-              <dt>Tipo de documento</dt>
-              <dd>{{ documentTypeLabel(s.documentType) }}</dd>
-            </div>
-            <div class="data-item">
-              <dt>Número de documento</dt>
-              <dd>{{ s.documentNumber || '—' }}</dd>
-            </div>
-            <div class="data-item wide">
-              <dt>Colegio</dt>
-              <dd>{{ s.institution?.name ?? 'Sin colegio asignado' }}</dd>
-            </div>
-          </dl>
+          <!-- Correo (editable, con contraseña) -->
+          <div class="data-item wide">
+            <dt>Correo</dt>
+            <dd v-if="editing !== 'email'" class="with-action">
+              <span class="break">{{ profile.email }}</span>
+              <button type="button" class="link-button" :disabled="editing !== null" @click="startEdit('email')">
+                Cambiar
+              </button>
+            </dd>
+            <dd v-else>
+              <form class="inline-form" @submit.prevent="saveField">
+                <div class="field">
+                  <label for="edit-email">Correo nuevo</label>
+                  <input id="edit-email" v-model="edit.email" class="field-input" type="email" autocomplete="email" />
+                </div>
+                <div class="field">
+                  <label for="edit-password">Contraseña actual</label>
+                  <input
+                    id="edit-password"
+                    v-model="edit.currentPassword"
+                    class="field-input"
+                    type="password"
+                    autocomplete="current-password"
+                  />
+                  <small class="hint">La pedimos para confirmar que eres tú.</small>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn-primary" :disabled="saving">
+                    <i v-if="saving" class="pi pi-spin pi-spinner"></i> Cambiar correo
+                  </button>
+                  <button type="button" class="btn-secondary" :disabled="saving" @click="cancelEdit">Cancelar</button>
+                </div>
+                <p v-if="fieldError" class="error" role="alert">{{ fieldError }}</p>
+              </form>
+            </dd>
+          </div>
+        </dl>
+      </section>
 
-          <div class="child-footer">
-            <span v-if="s.latestAssessment" class="status-pill done">
-              <i class="pi pi-check-circle"></i> Formulario inicial: {{ formatDate(s.latestAssessment.createdAt) }}
-            </span>
-            <template v-else>
-              <span class="status-pill pending"><i class="pi pi-clock"></i> Formulario inicial pendiente</span>
-              <NuxtLink
-                :to="{ path: ROUTES.initialAssessment, query: { studentId: s.id } }"
-                class="btn-secondary small"
-              >
-                Hacer formulario
-              </NuxtLink>
-            </template>
-          </div>
-        </li>
-      </ul>
-
-      <!-- Formulario para agregar un hijo o menor -->
-      <form v-if="showAddForm" class="add-child-form" novalidate @submit.prevent="submitChild">
-        <h3 class="form-title">Datos del nuevo hijo o menor</h3>
-        <p class="hint">Al guardar pasarás a su formulario inicial para el diagnóstico.</p>
-
-        <div class="form-grid">
-          <div class="field">
-            <label for="child-first-name">Nombres</label>
-            <input id="child-first-name" v-model="child.firstName" class="field-input" autocomplete="off" />
-          </div>
-          <div class="field">
-            <label for="child-last-name">Apellidos</label>
-            <input id="child-last-name" v-model="child.lastName" class="field-input" autocomplete="off" />
-          </div>
-          <div class="field">
-            <label for="child-document-type">Tipo de documento</label>
-            <select id="child-document-type" v-model="child.documentType" class="field-input">
-              <option v-for="t in DOCUMENT_TYPES_KIDS" :key="t.value" :value="t.value">{{ t.label }}</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="child-document-number">Número de documento</label>
-            <input
-              id="child-document-number"
-              v-model="child.documentNumber"
-              class="field-input"
-              inputmode="numeric"
-              autocomplete="off"
-            />
-          </div>
-          <div class="field">
-            <label for="child-birth-date">Fecha de nacimiento</label>
-            <input id="child-birth-date" v-model="child.birthDate" class="field-input" type="date" :max="todayIso" />
-            <small class="hint">{{ childAge !== null ? `Edad: ${childAge} años` : 'La edad se calcula automáticamente' }}</small>
-          </div>
-          <div class="field">
-            <label for="child-grade">Grado escolar</label>
-            <select id="child-grade" v-model="child.grade" class="field-input">
-              <option value="">Sin grado</option>
-              <option v-for="g in SCHOOL_GRADES" :key="g" :value="g">{{ g }}</option>
-            </select>
-          </div>
-          <div class="field wide">
-            <label for="child-institution">Colegio</label>
-            <select id="child-institution" v-model="child.institutionId" class="field-input">
-              <option value="">Sin colegio asignado</option>
-              <option v-for="inst in institutions" :key="inst.id" :value="inst.id">{{ inst.name }}</option>
-            </select>
-          </div>
-        </div>
-
-        <p v-if="addError" class="error" role="alert">{{ addError }}</p>
-
-        <div class="form-actions">
-          <button type="submit" class="btn-primary" :disabled="addSaving">
-            <i v-if="addSaving" class="pi pi-spin pi-spinner"></i> Guardar y continuar al formulario
+      <!-- Hijos o menores a cargo (solo tutor) -->
+      <section v-if="isTutor" class="settings-card" aria-labelledby="children-title">
+        <div class="card-header-row">
+          <h2 id="children-title" class="card-title">Hijos o menores a cargo</h2>
+          <button v-if="!showAddForm" type="button" class="btn-primary" @click="openAddForm">
+            <i class="pi pi-plus"></i> Agregar hijo o menor
           </button>
-          <button type="button" class="btn-secondary" :disabled="addSaving" @click="closeAddForm">Cancelar</button>
         </div>
-      </form>
-    </section>
+
+        <p v-if="(studentsLoading || (!studentsLoaded && !studentsError)) && students.length === 0" class="muted">Cargando…</p>
+        <p v-else-if="studentsError && students.length === 0" class="error">{{ studentsError }}</p>
+        <p v-else-if="students.length === 0" class="muted">Aún no tienes hijos o menores registrados.</p>
+
+        <!-- Carrusel manual: un hijo a la vez; las flechas solo aparecen si hay otro antes o después -->
+        <div
+          v-else-if="current"
+          class="carousel"
+          :class="{ 'has-controls': students.length > 1 }"
+          role="group"
+          aria-roledescription="carrusel"
+          aria-label="Hijos o menores a cargo"
+        >
+          <button
+            v-if="hasPrev"
+            type="button"
+            class="carousel-arrow prev"
+            aria-label="Ver el hijo o menor anterior"
+            @click="showPrev"
+          >
+            <i class="pi pi-chevron-left"></i>
+          </button>
+
+          <Transition :name="`slide-${slideDirection}`" mode="out-in">
+            <article
+              :key="current.id"
+              class="child-card"
+              :aria-label="`${currentIndex + 1} de ${students.length}: ${titleCase(`${current.firstName} ${current.lastName}`)}`"
+            >
+              <div class="child-head">
+                <span class="child-avatar" aria-hidden="true">
+                  {{ initials(titleCase(`${current.firstName} ${current.lastName}`)) }}
+                </span>
+                <div class="child-title">
+                  <h3>{{ titleCase(`${current.firstName} ${current.lastName}`) }}</h3>
+                  <span>{{ [current.grade, current.age != null ? `${current.age} años` : null].filter(Boolean).join(' · ') }}</span>
+                </div>
+              </div>
+
+              <dl class="data-grid compact">
+                <div class="data-item">
+                  <dt>Nombres</dt>
+                  <dd>{{ titleCase(current.firstName) }}</dd>
+                </div>
+                <div class="data-item">
+                  <dt>Apellidos</dt>
+                  <dd>{{ titleCase(current.lastName) }}</dd>
+                </div>
+                <div class="data-item">
+                  <dt>Tipo de documento</dt>
+                  <dd>{{ documentTypeLabel(current.documentType) }}</dd>
+                </div>
+                <div class="data-item">
+                  <dt>Número de documento</dt>
+                  <dd>{{ current.documentNumber || '—' }}</dd>
+                </div>
+                <div class="data-item wide">
+                  <dt>Colegio</dt>
+                  <dd>{{ current.institution?.name ?? 'Sin colegio asignado' }}</dd>
+                </div>
+              </dl>
+
+              <div class="child-footer">
+                <span v-if="current.latestAssessment" class="status-pill done">
+                  <i class="pi pi-check-circle"></i> Formulario inicial: {{ formatDate(current.latestAssessment.createdAt) }}
+                </span>
+                <template v-else>
+                  <span class="status-pill pending"><i class="pi pi-clock"></i> Formulario inicial pendiente</span>
+                  <NuxtLink
+                    :to="{ path: ROUTES.initialAssessment, query: { studentId: current.id } }"
+                    class="btn-secondary small"
+                  >
+                    Hacer formulario
+                  </NuxtLink>
+                </template>
+              </div>
+            </article>
+          </Transition>
+
+          <button
+            v-if="hasNext"
+            type="button"
+            class="carousel-arrow next"
+            aria-label="Ver el siguiente hijo o menor"
+            @click="showNext"
+          >
+            <i class="pi pi-chevron-right"></i>
+          </button>
+        </div>
+
+        <p v-if="students.length > 1" class="carousel-counter" aria-live="polite">
+          {{ currentIndex + 1 }} de {{ students.length }}
+        </p>
+
+        <!-- Formulario para agregar un hijo o menor -->
+        <form v-if="showAddForm" class="add-child-form" novalidate @submit.prevent="submitChild">
+          <h3 class="form-title">Datos del nuevo hijo o menor</h3>
+          <p class="hint">Al guardar pasarás a su formulario inicial para el diagnóstico.</p>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="child-first-name">Nombres</label>
+              <input id="child-first-name" v-model="child.firstName" class="field-input" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="child-last-name">Apellidos</label>
+              <input id="child-last-name" v-model="child.lastName" class="field-input" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="child-document-type">Tipo de documento</label>
+              <select id="child-document-type" v-model="child.documentType" class="field-input">
+                <option v-for="t in DOCUMENT_TYPES_KIDS" :key="t.value" :value="t.value">{{ t.label }}</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="child-document-number">Número de documento</label>
+              <input
+                id="child-document-number"
+                v-model="child.documentNumber"
+                class="field-input"
+                inputmode="numeric"
+                autocomplete="off"
+              />
+            </div>
+            <div class="field">
+              <label for="child-birth-date">Fecha de nacimiento</label>
+              <input id="child-birth-date" v-model="child.birthDate" class="field-input" type="date" :max="todayIso" />
+              <small class="hint">{{ childAge !== null ? `Edad: ${childAge} años` : 'La edad se calcula automáticamente' }}</small>
+            </div>
+            <div class="field">
+              <label for="child-grade">Grado escolar</label>
+              <select id="child-grade" v-model="child.grade" class="field-input">
+                <option value="">Sin grado</option>
+                <option v-for="g in SCHOOL_GRADES" :key="g" :value="g">{{ g }}</option>
+              </select>
+            </div>
+            <div class="field wide">
+              <label for="child-institution">Colegio</label>
+              <select id="child-institution" v-model="child.institutionId" class="field-input">
+                <option value="">Sin colegio asignado</option>
+                <option v-for="inst in institutions" :key="inst.id" :value="inst.id">{{ inst.name }}</option>
+              </select>
+            </div>
+          </div>
+
+          <p v-if="addError" class="error" role="alert">{{ addError }}</p>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary" :disabled="addSaving">
+              <i v-if="addSaving" class="pi pi-spin pi-spinner"></i> Guardar y continuar al formulario
+            </button>
+            <button type="button" class="btn-secondary" :disabled="addSaving" @click="closeAddForm">Cancelar</button>
+          </div>
+        </form>
+      </section>
+    </div>
   </main>
 </template>
 
@@ -453,11 +530,26 @@ $color-border-subtle: #e2e8f0;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  max-width: 1100px;
   width: 100%;
 
   @media (max-width: 768px) {
     padding: 1rem 1rem 2rem;
+  }
+}
+
+// Dos tarjetas una al frente de la otra; se apilan cuando no caben
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+
+  &.single {
+    grid-template-columns: minmax(0, 720px);
+  }
+
+  @media (max-width: 1100px) {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -708,16 +800,85 @@ $color-border-subtle: #e2e8f0;
   }
 }
 
-.children-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+// Carrusel: las flechas van en los extremos, sobre el borde de la tarjeta del hijo
+.carousel {
+  position: relative;
 
-  @media (max-width: 860px) {
-    grid-template-columns: 1fr;
+  &.has-controls {
+    padding: 0 1.4rem;
+  }
+}
+
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid $color-border-subtle;
+  background: #ffffff;
+  color: $color-brand-indigo;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+
+  &.prev {
+    left: 0;
+  }
+
+  &.next {
+    right: 0;
+  }
+
+  &:hover {
+    background: #eef2ff;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $color-brand-indigo;
+    outline-offset: 2px;
+  }
+}
+
+.carousel-counter {
+  margin: 0.75rem 0 0;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+// Deslizamiento según la dirección (siguiente → entra por la derecha; anterior → por la izquierda)
+.slide-next-enter-active,
+.slide-next-leave-active,
+.slide-prev-enter-active,
+.slide-prev-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.slide-next-enter-from,
+.slide-prev-leave-to {
+  opacity: 0;
+  transform: translateX(24px);
+}
+
+.slide-next-leave-to,
+.slide-prev-enter-from {
+  opacity: 0;
+  transform: translateX(-24px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-next-enter-active,
+  .slide-next-leave-active,
+  .slide-prev-enter-active,
+  .slide-prev-leave-active {
+    transition: none;
   }
 }
 

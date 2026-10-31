@@ -17,6 +17,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     token: useCookie<string | null>('auth_token', COOKIE_OPTIONS),
     refreshToken: useCookie<string | null>('refresh_token', COOKIE_OPTIONS),
     userRole: useCookie<string | null>('user_role', COOKIE_OPTIONS),
+    profileType: useCookie<string | null>('profile_type', COOKIE_OPTIONS),
   })
   const getCookies = () => nuxtApp.runWithContext(readCookies) as ReturnType<typeof readCookies>
 
@@ -66,6 +67,10 @@ export default defineNuxtPlugin((nuxtApp) => {
         cookies.refreshToken.value = response.refreshToken
         if (response.user?.role) {
           cookies.userRole.value = response.user.role.toLowerCase()
+        }
+        // El backend recalcula el tipo de perfil al renovar (ej. un adulto que agregó un hijo pasa a tutor)
+        if (isProfileType(response.profileType)) {
+          cookies.profileType.value = response.profileType
         }
         return true
       } catch {

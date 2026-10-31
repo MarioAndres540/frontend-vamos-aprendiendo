@@ -1,0 +1,212 @@
+// Estilos compartidos de las páginas del panel de usuarios (layouts/user-panel.vue):
+// Actividades, Analíticas y Biblioteca. Uso: @use '~/assets/scss/user-panel' as *;
+
+$brand-indigo: #4f46e5;
+$text-dark: #1e293b;
+$text-muted: #64748b;
+$border-subtle: #e2e8f0;
+
+// Colores por lectura de un puntaje: se distinguen también por claridad, no solo por tono
+$tone-strength: #60a5fa;
+$tone-watch: #f59e0b;
+$tone-reinforce: #9a3412;
+
+.panel-body {
+  padding: 1.75rem 2rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    padding: 1rem 1rem 2rem;
+  }
+}
+
+.card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #ffffff;
+  border-radius: 24px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  box-sizing: border-box;
+
+  @media (max-width: 640px) {
+    padding: 1.15rem;
+    border-radius: 18px;
+  }
+}
+
+.state-card {
+  margin: 0;
+  align-items: flex-start;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: $text-dark;
+}
+
+.muted {
+  margin: 0;
+  color: $text-muted;
+}
+
+.small {
+  font-size: 0.8rem;
+}
+
+.error {
+  margin: 0;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.body-text {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.btn-primary,
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1.1rem;
+  border-radius: 9999px;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid $brand-indigo;
+    outline-offset: 2px;
+  }
+}
+
+.btn-primary {
+  background: $brand-indigo;
+  border: 1px solid $brand-indigo;
+  color: #ffffff;
+
+  &:hover {
+    background: #4338ca;
+  }
+}
+
+.btn-secondary {
+  background: #ffffff;
+  border: 1px solid $border-subtle;
+  color: #334155;
+
+  &:hover {
+    background: #f8fafc;
+  }
+}
+
+// Botones de filtro (aria-pressed)
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.filter-btn {
+  min-height: 40px;
+  padding: 0 1rem;
+  border-radius: 9999px;
+  border: 1px solid $border-subtle;
+  background: #ffffff;
+  color: #334155;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+
+  &[aria-pressed='true'] {
+    background: $brand-indigo;
+    border-color: $brand-indigo;
+    color: #ffffff;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $brand-indigo;
+    outline-offset: 2px;
+  }
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+
+  &.tone-strength { background: #eff6ff; color: #1d4ed8; }
+  &.tone-watch { background: #fffbeb; color: #92400e; }
+  &.tone-reinforce { background: #fff7ed; color: #9a3412; }
+  &.tone-neutral { background: #f1f5f9; color: #334155; }
+  &.tone-ok { background: #f0fdf4; color: #15803d; }
+}
+
+.info-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin: 0;
+  padding: 1rem 1.15rem;
+  border-radius: 18px;
+  background: #eef2ff;
+  color: #312e81;
+  font-size: 0.88rem;
+  line-height: 1.55;
+
+  i {
+    margin-top: 0.15rem;
+    font-size: 1.1rem;
+  }
+}
+
+.note-box {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 14px;
+  background: #f8fafc;
+  font-size: 0.82rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.warn-box {
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: 12px;
+  background: #fffbeb;
+  color: #78350f;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}

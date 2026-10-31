@@ -6,6 +6,55 @@ Todos los cambios notables realizados en este proyecto se documentarán en este 
 
 ## [Unreleased]
 
+#### 🔄 Tipo de perfil actualizado al renovar la sesión (2026-10-29)
+- `plugins/api.ts`: al renovar el token (`POST /auth/refresh`) también se actualiza la cookie `profile_type` con el valor que recalcula el backend. Antes un cambio de rol, o un adulto que agrega un hijo y pasa a tutor, solo se reflejaba en el siguiente inicio de sesión.
+
+#### 🎯 Nuevas pestañas Actividades, Analíticas y Biblioteca (2026-10-26)
+- El menú lateral lleva a `/activities`, `/analytics` y `/library` (antes `#`). La pestaña queda activa también en subpáginas (`/library/:id`). Las acciones rápidas del dashboard ahora son "Ver Actividades" y "Ver Analíticas".
+- Las tres muestran los datos del hijo elegido en el menú de la cuenta (tutor) o del propio usuario (adulto / tester), y se actualizan al cambiar de hijo. Lo resuelve el nuevo composable `usePanelSubject`.
+- **Actividades** (`GET /telemetry/progress`):
+  - Las 7 áreas cognitivas con descripción, qué registra la app, nivel y puntos.
+  - Las **recomendadas** según las áreas a reforzar del formulario inicial (`recommendedCategories`).
+  - Filtros Todas / Recomendadas / Sin jugar.
+- **Analíticas**:
+  - **Uso de la app** (`GET /presence/history`): tiempo total, sesiones, promedio, último ingreso, gráfico por día, semana o mes según el periodo (7, 30, 90 días o 1 año), y últimas sesiones con motivo de cierre. Avisa cuando las sesiones no indican qué hijo jugó.
+  - **Desempeño en el juego** (`GET /telemetry/performance`): valores frente al rango esperado para la edad. Hoy muestra los rangos y "Sin datos de juego todavía".
+  - **Evolución del formulario inicial** y **patrones a observar** (avisos de trazos).
+- **Biblioteca** (`/library` y `/library/:id`):
+  - Guías recomendadas según el formulario.
+  - Búsqueda (sin tildes ni mayúsculas) y filtros por área.
+  - "Cómo usar Vamos Aprendiendo", con enlaces a las funciones reales.
+  - Guías por área y página de detalle con ideas para la casa.
+  - **El contenido (8 guías en `utils/library.ts`) es provisional y debe revisarlo el equipo pedagógico.**
+- Nuevos: `components/panel/SubjectHeader.vue`, `components/library/GuideCard.vue`, `assets/scss/_user-panel.scss` (estilos compartidos), composables `useTelemetry` y `useAppUsage`.
+- `utils/assessment-areas.ts`: relación entre dimensiones del formulario y categorías del juego (`categoryForDimension`, `recommendedCategories`), `recommendedRouteOf` (también la usa Diagnósticos) y `CATEGORY_TRACKING`.
+- `useAssessmentHistory` y `useMyLatestAssessment` exponen `loaded`.
+- **Requiere reiniciar el backend** para tener `/presence/history` y `/telemetry/*`.
+
+#### 🩺 Nueva pestaña Diagnósticos (`/diagnostics`) (2026-10-26)
+- El menú "Diagnósticos" (y la acción rápida, ahora "Ver Diagnóstico") lleva a la nueva página en lugar de `/child-registration`. Implementa la propuesta visual aprobada.
+- **Tutor**: muestra el formulario del hijo elegido en el menú de la cuenta; al cambiar de hijo la página se actualiza sin ir al dashboard (`definePageMeta({ showsSelectedStudent: true })`, también en el dashboard). **Adulto / tester**: su propio formulario.
+- Contenido:
+  - Persona evaluada, quién respondió, fecha y número de preguntas.
+  - **Nivel de alerta**: puntaje sobre el máximo, con una barra que marca los rangos bajo, moderado y alto (los mismos límites del backend: niños 15/25, adultos 12/22).
+  - **Área de enfoque principal** (la condición que calcula el backend), con sus preguntas y puntos.
+  - **Ruta recomendada**, tomada del texto de recomendaciones del backend.
+  - **Perfil por área**: promedio de 1 a 5 por área, en colores de fortaleza, a observar o a reforzar.
+  - **Lo que encontramos**: fortalezas, áreas a reforzar y frases en lenguaje sencillo. Si el enfoque del backend (puntaje sumado) no coincide con el área de respuesta más alta, se explica.
+  - **Respuestas del formulario**: las preguntas con su texto completo, área y respuesta.
+  - **Próximos pasos**, con el aviso de que el resultado es orientativo y **no es un diagnóstico clínico**.
+  - **Historial** de formularios del hijo (o propios).
+- Acciones: **Imprimir o guardar PDF** (`window.print()`, sin botones en la impresión) y **Repetir formulario** (tutor: con el `studentId` del hijo; tester: su formulario; el adulto no, porque el formulario es una sola vez).
+- Sin formulario todavía: aviso con "Hacer formulario inicial". Tutor sin hijos: enlace a Configuración.
+- `utils/assessment-areas.ts`: `scoreAreas` (todas las áreas con promedio, preguntas y tono), `answerLabel`, `areaTone`, `riskThresholds`, `describeFindings` y `joinList`. `summarizeAreas` ahora se apoya en `scoreAreas`.
+- `useMyStudents.ts`: nuevo `useAssessmentHistory` (`GET /assessments/history`, con `studentId` opcional); `useMyLatestAssessment` lo reutiliza.
+- **Corregido**: Diagnósticos, Configuración y la tarjeta "Tutor de" mostraban por un instante "Aún no tienes hijos" antes de cargar la lista; ahora muestran "Cargando" hasta la primera respuesta.
+
+#### 📐 Ajustes de diseño: título en el encabezado y Configuración en dos columnas (2026-10-25)
+- **Dashboard**: "Panel de Progreso / Resumen general del aprendizaje" ya no ocupa una fila propia sobre las tarjetas; sube al **centro del encabezado**. Cada página lo declara con `definePageMeta({ headerTitle, headerSubtitle })` y `layouts/user-panel.vue` lo muestra centrado (encabezado en tres columnas: saludo | título | acciones). En pantallas de 1100 px o menos el título va debajo del menú, porque no cabe en la barra.
+- **Configuración**: "Mis datos" y "Hijos o menores a cargo" quedan **una al frente de la otra** y se apilan en pantallas de 1100 px o menos. Se quitó el ancho máximo que dejaba vacío el lado derecho.
+- **Carrusel de hijos** en Configuración: se ve un hijo a la vez. Las flechas `<` y `>` van en los extremos de la tarjeta y solo aparecen si hay un hijo anterior o siguiente; con un solo hijo no se muestran. No avanza solo, únicamente con las flechas. Muestra "1 de N" y una animación corta de deslizamiento, que se desactiva si el sistema pide reducir el movimiento.
+
 #### ⚙️ Configuración, menú de la cuenta e hijos a cargo (2026-10-25)
 - **Layout compartido `layouts/user-panel.vue`**: el menú lateral, el saludo y el menú de la cuenta salieron de `dashboard.vue` y ahora los usan `/dashboard` y `/settings`. El enlace activo del menú se calcula según la ruta.
   - En tablet y celular (≤ 1024 px), donde el menú lateral se oculta, aparece un **menú horizontal** bajo el encabezado (antes no había forma de navegar en esos tamaños).
@@ -135,7 +184,10 @@ Todos los cambios notables realizados en este proyecto se documentarán en este 
 6. ✅ **Inicio de sesión del estudiante** (decisiones del 2026-10-07 y 2026-10-08): el niño no tiene cuenta propia; usa la cuenta de su tutor (o el adulto la suya) en la app de Unity y en la web, y puede estar abierta en ambas a la vez sin restricción. Esos son los perfiles que ya maneja `profile-routes.ts`. No hay trabajo pendiente en el frontend; los detalles de Unity están en `backend/CHANGELOG.md` (pendiente #5).
 7. **Páginas del flujo anterior**: `profile-selection.vue` y `child-registration.vue` siguen usando el middleware `auth` y no forman parte del flujo nuevo (el registro de hijos ya está en `register.vue`). Revisar si se eliminan o se integran, y quitar sus enlaces del menú de `dashboard.vue`. (2026-10-25: ya se quitaron "Estudiantes", "Gestionar Estudiantes" y, del menú de la cuenta, "Cambiar Perfil" y "Diagnóstico"; siguen "Diagnósticos" en el menú lateral y "Nuevo Diagnóstico" en acciones rápidas → `/child-registration`.)
 7b. **Formulario inicial por hijo**: ✅ los hijos agregados desde Configuración y los que tienen el formulario pendiente ya se diagnostican con `?studentId=`. Pendiente: el formulario del primer inicio de sesión (después del registro) aún no pregunta de qué hijo es; con varios hijos registrados a la vez queda sin asignar.
-7c. **Menú "Diagnósticos"**: decidir a dónde lleva (hoy `/child-registration`, del flujo anterior). Una opción es una vista con el estado del formulario de cada hijo, que ya existe en Configuración.
+7c. ✅ **Menú "Diagnósticos"**: ahora lleva a `/diagnostics` (2026-10-26). `/child-registration` y `/profile-selection` ya no tienen enlaces desde el panel; falta decidir si se eliminan.
+7e. **Biblioteca**: revisar y completar el contenido de las guías con el equipo pedagógico; si debe editarlo el administrador, moverlo a una tabla en la base.
+7f. **Actividades y Analíticas**: se llenarán cuando la app de Unity guarde sesiones de juego, trazos y progreso (falta el backend de escritura de telemetría) y envíe el `studentId` al abrir la sesión.
+7d. **Diagnósticos — pendientes**: definir las actividades sugeridas por área (cuando existan en la app de Unity) y un periodo recomendado para repetir el formulario; permitir que el adulto repita su formulario (hoy el middleware solo lo deja una vez).
 8. **Dashboard de usuarios (`dashboard.vue`)** — ✅ el saludo, la etiqueta de perfil, la tarjeta de conexión a la app y la tarjeta "Tutor de" / "Mi perfil" ya están (ver `[Unreleased]`). **Pendiente**: construir las demás tarjetas (actividades, tiempo de juego, precisión, rendimiento por área, progreso por ruta, actividad reciente, etc.) con la información del formulario inicial (`initial_assessments`) y luego con la telemetría de Unity. Antecedentes del reporte original: **muestra "Docente" a tutores y adultos** (reportado el 2026-10-07 al probar con la tutora `marisolvice@gmail.com`):
    - **Verificado en la base**: la cuenta es correcta. Rol `usuario`, tutora de Matías Villegas Ceballos (`tutor_students`), sin registro en `teachers`, formulario de niños completado. El login la envió a `/dashboard` como corresponde.
    - **Causa**: la etiqueta de rol del encabezado está fija en el código (`dashboard.vue:326`, `<span class="user-role">Docente</span>`), y el correo de respaldo es `docente@vamosaprendiendo.edu` (línea 335).

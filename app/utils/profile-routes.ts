@@ -54,5 +54,10 @@ declare module '#app' {
   interface PageMeta {
     /** Perfiles que pueden ver la página; los demás se envían a su ruta de inicio */
     allowedProfiles?: ProfileType[]
+    /** Título centrado en el encabezado de layouts/user-panel.vue */
+    headerTitle?: string
+    headerSubtitle?: string
+    /** La página muestra al hijo elegido en el menú de la cuenta: al cambiarlo no se va al dashboard */
+    showsSelectedStudent?: boolean
   }
 }
