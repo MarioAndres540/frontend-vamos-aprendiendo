@@ -3,6 +3,7 @@
 > **Proyecto:** Vamos Aprendiendo Web  
 > **Framework:** Nuxt 4 (Nuxt 4.4.x + Vue 3.5.x + TypeScript)  
 > **Librería UI:** PrimeVue v4 (Tema Aura) + Sass Embedded  
+> **Reglas para agentes:** [AGENTS.md](./AGENTS.md) · **Especificación:** [../SPEC.md](../SPEC.md)  
 > **Backend conectado:** NestJS API REST (`http://localhost:3000/api/v1`)
 
 ---
@@ -36,36 +37,26 @@ El frontend está desarrollado bajo el paradigma **SSR / SPA Híbrido** provisto
 ## 2. Estructura de Carpetas y Responsabilidades
 
 ```text
-frontend/
-├── .env                  # Variables de entorno locales (puerto, URL backend)
-├── .env.example          # Plantilla de variables de entorno
-├── nuxt.config.ts        # Configuración principal de Nuxt, módulos, vite y runtimeConfig
-├── package.json          # Dependencias y scripts de ejecución
-├── tsconfig.json         # Configuración del compilador TypeScript
-├── public/               # Archivos estáticos servidos directamente en la raíz (ej: /avatar.png)
-└── app/                  # Directorio raíz del código fuente (convención Nuxt 4)
-    ├── app.vue           # Componente raíz maestro (punto de entrada visual)
-    ├── assets/           # Recursos procesados por Vite (SCSS, estilos globales, imágenes)
-    │   ├── css/          # Hojas de estilo CSS
-    │   ├── scss/         # Archivos Sass/SCSS compilables (main.scss)
-    │   └── img/          # Imágenes e ilustraciones importables en componentes
-    ├── components/       # Componentes Vue reutilizables (auto-importados)
-    │   └── ui/           # Componentes atómicos de diseño (UiButton, UiCard, UiInput, UiModal)
-    ├── composables/      # Lógica de negocio reutilizable, hooks y gestión de estado
-    │   └── useAuth.ts    # Composable de autenticación, sesión y perfil de niño
-    ├── middleware/       # Route Middleware (los "Guards" de Nuxt/Vue)
-    │   ├── auth.ts       # Protege rutas privadas (exige token)
-    │   └── guest.ts      # Protege rutas de invitados (login/register si ya está autenticado)
-    ├── pages/            # Vistas y páginas mapeadas automáticamente a URLs
-    │   ├── index.vue             # Redirección inicial según token
-    │   ├── login.vue             # Vista de inicio de sesión
-    │   ├── register.vue          # Vista de registro de acudiente/usuario
-    │   ├── child-registration.vue# Registro y setup del perfil del estudiante
-    │   ├── profile-selection.vue # Selección de perfil ("¿Quién aprende hoy?")
-    │   ├── home.vue              # Vista principal / Landing del usuario
-    │   └── dashboard.vue         # Panel de control de administración o aprendizaje
-    └── plugins/          # Plugins que se ejecutan antes de montar la aplicación
-        └── api.ts        # Inyector del cliente HTTP $api con interceptores
+frontend-vamos-aprendiendo/
+├── .env / .env.example   # NUXT_PUBLIC_API_BASE (no definir PORT)
+├── nuxt.config.ts        # Módulos, PrimeVue (Aura), CSS, devServer.port = 4242, runtimeConfig
+├── nodemon.json          # `npm run dev` reinicia Nuxt al cambiar .env / nuxt.config.ts
+├── public/               # Estáticos servidos en la raíz
+└── app/                  # Código fuente (convención Nuxt 4)
+    ├── app.vue
+    ├── assets/           # css/tokens.css, scss/ (main, _variables, _mixins, _panel, _user-panel), img/
+    ├── components/       # ui/ (UiButton, UiCard, UiInput, UiModal), dashboard/, layout/, library/, panel/
+    ├── composables/      # useAuth, useProfile, useMyStudents, useStudentSetup, useAssessment,
+    │                     # useTelemetry, usePanelSubject, useAppPresence, useAppUsage,
+    │                     # useInstitutions, useLicenses, useAdminUsers, useTeacherDashboard
+    ├── layouts/          # user-panel.vue
+    ├── middleware/       # auth, guest, profile-access, assessment-gate
+    ├── pages/            # index, login, register, initial-assessment, child-registration,
+    │                     # profile-selection, home, dashboard, activities, analytics, diagnostics,
+    │                     # settings, library/ (index, [id]), admin/index, teacher/dashboard
+    ├── plugins/api.ts    # Cliente $api (Bearer + renovación de token)
+    └── utils/            # profile-routes (perfiles, ROUTES, cookies), assessment-areas,
+                          # form-options, library, text
 ```
 
 ### Detalle por Directorio:
@@ -119,22 +110,20 @@ sequenceDiagram
 ### ¿Ya usamos cookies en el proyecto?
 **SÍ, el proyecto ya utiliza cookies activamente** mediante la utilidad nativa reactiva de Nuxt: `useCookie<T>()`.
 
-### Cookies actuales en uso:
-1. **`auth_token`**: Almacena el JWT emitido por el backend (expira en 7 días, `sameSite: 'lax'`).
-2. **`refresh_token`**: Almacena el token de refresco para renovar la sesión (expira en 7 días).
-3. **`has_child_profile`**: Booleano que indica si el acudiente ya completó el perfil del menor (expira en 30 días).
+### Cookies actuales en uso (7 días, `sameSite: 'lax'`, ver `SESSION_COOKIE_OPTIONS` en `utils/profile-routes.ts`):
+1. **`auth_token`**: access token JWT.
+2. **`refresh_token`**: token de refresco (el backend lo rota en cada renovación).
+3. **`user_role`**: rol (`admin`, `usuario`, `profesor`, `test`).
+4. **`profile_type`**: `admin`, `profesor`, `tester`, `tutor` o `adulto`; decide la ruta inicial y las páginas permitidas.
+5. **`has_child_profile`**: si ya completó el formulario inicial.
+6. **`user_first_name`** y **`selected_student_id`** (hijo elegido en el menú de la cuenta).
 
-### Dónde se usan en el código actual:
-- **`app/composables/useAuth.ts`**:
-  ```ts
-  const token = useCookie<string | null>('auth_token', {
-    maxAge: 60 * 60 * 24 * 7, // 7 días
-    sameSite: 'lax'
-  })
-  ```
-- **`app/plugins/api.ts`**: Lee la cookie `auth_token` para inyectar automáticamente el encabezado `Authorization: Bearer <token>` en cada petición saliente.
-- **`app/middleware/auth.ts`**: Verifica `if (!token.value)` para proteger rutas privadas.
-- **`app/middleware/guest.ts`**: Verifica `if (token.value)` para evitar que un usuario autenticado vuelva a `/login`.
+### Dónde se usan:
+- **`composables/useAuth.ts`**: define y limpia las cookies al iniciar/cerrar sesión.
+- **`plugins/api.ts`**: lee `auth_token` para el header `Authorization: Bearer` y, al renovar, actualiza `auth_token`, `refresh_token`, `user_role` y `profile_type`.
+- **`middleware/*`**: `auth`, `guest`, `profile-access` y `assessment-gate` consultan `auth_token`, `profile_type` y `has_child_profile`.
+
+> Son cookies de Nuxt legibles desde JS (no `HttpOnly`); el backend no emite cookies.
 
 ### Cómo crear o usar una nueva Cookie:
 ```ts
@@ -162,7 +151,7 @@ userPreferences.value = null
 ## 5. Consumo de Servicios del Backend
 
 ### 1. Configuración de la URL Base
-En [nuxt.config.ts](file:///e:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/nuxt.config.ts) se define la variable de configuración pública:
+En [nuxt.config.ts](./nuxt.config.ts) se define la variable de configuración pública:
 ```ts
 runtimeConfig: {
   public: {
@@ -173,9 +162,9 @@ runtimeConfig: {
 En `.env` se puede sobreescribir: `NUXT_PUBLIC_API_BASE=http://localhost:3000/api/v1`.
 
 ### 2. El Cliente Centralizado `$api`
-En [app/plugins/api.ts](file:///e:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/app/plugins/api.ts) se crea una instancia especializada de `$fetch`:
+En [app/plugins/api.ts](./app/plugins/api.ts) se crea una instancia especializada de `$fetch`:
 - **Inyección automática del Token:** En cada request toma la cookie `auth_token` e incluye `Authorization: Bearer <token>`.
-- **Manejo de expiración (401 Unauthorized):** Si el backend responde `401`, limpia la cookie `auth_token` y redirige automáticamente al usuario a `/login`.
+- **Renovación ante 401:** una sola llamada compartida a `POST /auth/refresh` con `refresh_token`; guarda los nuevos tokens y reintenta la petición una vez. `/auth/login|register|oauth|refresh` nunca disparan la renovación. Si no se puede renovar, limpia la sesión y redirige a `/login`.
 
 ### 3. Patrón Recomendado para Consumir Endpoints
 Nunca se debe llamar a `$fetch` o `axios` directamente dentro de las vistas (`pages/*.vue`). Toda llamada al backend debe encapsularse en un **Composable**.
@@ -243,6 +232,8 @@ export const useCourses = () => {
 ```
 
 ---
+
+> Los ejemplos con `courses` / `useCourses` de esta guía son ilustrativos; esos archivos no existen.
 
 ## 6. Guía de Creación: Componentes
 
@@ -416,24 +407,17 @@ En Nuxt y Vue, el concepto de **Guard** (como el `CanActivate` de Angular) se de
 Los Guards se ubican en `app/middleware/`. Nuxt los detecta automáticamente por su nombre de archivo.
 
 ### 1. Guards Existentes en el Proyecto
-- [app/middleware/auth.ts](file:///e:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/app/middleware/auth.ts):
-  ```ts
-  export default defineNuxtRouteMiddleware((to, from) => {
-    const token = useCookie('auth_token')
-    if (!token.value) {
-      return navigateTo('/login')
-    }
-  })
-  ```
-- [app/middleware/guest.ts](file:///e:/SENA/Proyecto%20productivo/vamos-aprendiendo-web/frontend/app/middleware/guest.ts):
-  ```ts
-  export default defineNuxtRouteMiddleware((to, from) => {
-    const token = useCookie('auth_token')
-    if (token.value) {
-      return navigateTo('/home')
-    }
-  })
-  ```
+| Middleware | Función |
+|---|---|
+| [`auth`](./app/middleware/auth.ts) | Exige `auth_token`; el staff (admin/profesor) no entra a `/profile-selection` ni `/child-registration`, y quien ya completó el setup tampoco. |
+| [`guest`](./app/middleware/guest.ts) | Con sesión completa (token + `profile_type`) redirige a `/home`. Para `login`/`register`. |
+| [`profile-access`](./app/middleware/profile-access.ts) | Control principal: exige sesión, resuelve la ruta de inicio (`resolveHomeRoute`) y bloquea páginas fuera de `allowedProfiles`. |
+| [`assessment-gate`](./app/middleware/assessment-gate.ts) | Lleva a `/initial-assessment` si falta el diagnóstico (admin/profesor exentos). |
+
+Uso recomendado en una página:
+```ts
+definePageMeta({ middleware: 'profile-access', allowedProfiles: ['tutor', 'adulto'] })
+```
 
 ### 2. Cómo Crear un Nuevo Guard (Ejemplo: Guard de Roles `role.ts`)
 Crear el archivo `app/middleware/role.ts`:
@@ -452,7 +436,7 @@ export default defineNuxtRouteMiddleware((to, from) => {
   const requiredRoles = to.meta.requiredRoles as string[] | undefined
 
   if (requiredRoles && requiredRoles.length > 0) {
-    const userRole = user.value?.role || 'STUDENT'
+    const userRole = user.value?.role || 'usuario'
     
     if (!requiredRoles.includes(userRole)) {
       // Si no tiene permisos, redirigir a vista no autorizada o al inicio
@@ -468,7 +452,7 @@ En cualquier página (`app/pages/admin.vue`):
 <script setup lang="ts">
 definePageMeta({
   middleware: ['role'],
-  requiredRoles: ['ADMIN', 'TEACHER'] // Parámetro leído por el Guard
+  requiredRoles: ['admin', 'profesor'] // Parámetro leído por el Guard
 })
 </script>
 ```
