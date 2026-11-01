@@ -130,6 +130,8 @@ const ageFromBirthDate = (birthDate?: string) => {
             </table>
           </div>
         </section>
+
+        <TeacherRecentActivityCard />
       </template>
     </main>
   </div>

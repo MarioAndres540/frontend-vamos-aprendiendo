@@ -8,7 +8,6 @@ import numeroImg from '~/assets/img/numero.png'
 import logicaImg from '~/assets/img/logica.png'
 import atencionImg from '~/assets/img/atencion.png'
 import memoriaImg from '~/assets/img/memoria.png'
-import creatividadImg from '~/assets/img/creatividad.png'
 import boyImg from '~/assets/img/boy.png'
 
 // Dashboard de usuarios: tutores y adultos (con el formulario inicial completo) y testers.
@@ -25,76 +24,148 @@ definePageMeta({
 
 const selectedTimeRange = ref('30d')
 
-// KPI Metrics (la primera tarjeta es la conexión a la app: AppConnectionCard)
-const metrics = [
-  {
-    id: 'activities',
-    title: 'Actividades completadas',
-    value: '1,248',
-    growth: '18%',
-    icon: 'pi pi-trophy',
-    bgColor: '#fef3c7',
-    iconColor: '#d97706'
-  },
-  {
-    id: 'time',
-    title: 'Tiempo total de juego',
-    value: '86 h',
-    growth: '9%',
-    icon: 'pi pi-clock',
-    bgColor: '#dbeafe',
-    iconColor: '#2563eb'
-  },
-  {
-    id: 'accuracy',
-    title: 'Precisión promedio',
-    value: '87%',
-    growth: '5%',
-    icon: 'pi pi-bullseye',
-    bgColor: '#fee2e2',
-    iconColor: '#dc2626'
+// ---- Datos reales del estudiante (tutor: el hijo elegido; adulto y tester: la propia cuenta) ----
+const { isTutor, hasNoStudents, studentId, load } = usePanelSubject()
+const { data: routeProgress, loading: routeLoading, error: routeError, fetchData: fetchRouteProgress } = useRouteProgress()
+const { data: xp, loading: xpLoading, error: xpError, fetchData: fetchXp } = useXp()
+const { data: monthly, loading: monthlyLoading, error: monthlyError, fetchData: fetchMonthly } = useMonthlyUsage()
+const { performance, loading: performanceLoading, fetchPerformance } = usePerformance()
+
+const loadStats = (id?: string) =>
+  Promise.all([fetchRouteProgress(id), fetchXp(id), fetchMonthly(id), fetchPerformance(30, id)])
+
+onMounted(async () => {
+  if (isTutor.value) await load()
+  if (!hasNoStudents.value) loadStats(studentId.value)
+})
+
+// Cambio de hijo desde el menú de la cuenta
+watch(studentId, (id, previous) => {
+  if (id && id !== previous) loadStats(id)
+})
+
+interface KpiTrend {
+  direction: 'up' | 'down' | 'same'
+  text: string
+  label: string
+}
+
+interface KpiMetric {
+  id: string
+  title: string
+  value: string
+  detail?: string
+  trend?: KpiTrend
+  // Valor que aún no existe (no hay datos suficientes): se muestra atenuado, nunca como un número inventado
+  unavailable?: boolean
+  icon: string
+  bgColor: string
+  iconColor: string
+}
+
+const monthName = (iso: string) =>
+  new Date(iso).toLocaleDateString('es-CO', { month: 'long', timeZone: 'America/Bogota' })
+
+// Puntaje por actividades completadas: XP acumulado (10 por cada letra o número aprobado, una sola vez)
+const xpMetric = computed<KpiMetric>(() => {
+  const base = { id: 'xp', title: 'Puntaje por actividades completadas', icon: 'pi pi-trophy', bgColor: '#fef3c7', iconColor: '#d97706' }
+  if (xpLoading.value && !xp.value) return { ...base, value: '…' }
+  if (!xp.value) return { ...base, value: '—', detail: xpError.value ?? undefined, unavailable: true }
+  const count = xp.value.rewardsCount
+  return {
+    ...base,
+    value: `${xp.value.totalXp.toLocaleString('es-CO')} XP`,
+    detail: count === 0 ? 'Aún sin ejercicios aprobados' : `${count} ${count === 1 ? 'ejercicio aprobado' : 'ejercicios aprobados'}`,
   }
+})
+
+// Tiempo con la app abierta este mes frente al mismo tramo del mes anterior (hora de Colombia)
+const timeMetric = computed<KpiMetric>(() => {
+  const base = { id: 'time', title: 'Tiempo total de juego', icon: 'pi pi-clock', bgColor: '#dbeafe', iconColor: '#2563eb' }
+  if (monthlyLoading.value && !monthly.value) return { ...base, value: '…' }
+  if (!monthly.value) return { ...base, value: '—', detail: monthlyError.value ?? undefined, unavailable: true }
+
+  const { current, previous, comparison, elapsedDays } = monthly.value
+  const previousMonth = monthName(previous.from)
+  const period = previous.capped ? `todo ${previousMonth}` : `el mismo tramo de ${previousMonth}`
+  const trend: KpiTrend =
+    comparison.percentChange === null
+      ? { direction: 'same', text: 'Sin base', label: `${previousMonth} no tuvo tiempo registrado` }
+      : { direction: comparison.direction, text: `${Math.abs(comparison.percentChange)}%`, label: `vs. ${period}` }
+
+  const diff = comparison.differenceSeconds
+  const diffText = diff === 0 ? 'Igual que' : `${diff > 0 ? '+' : '−'}${formatDuration(Math.abs(diff))} frente a`
+  return {
+    ...base,
+    value: formatDuration(current.seconds),
+    detail: `Con la app abierta del 1 al ${elapsedDays} de ${monthName(current.from)} · ${diffText} ${previousMonth}`,
+    trend,
+  }
+})
+
+// Precisión del trazo (forma, orden y dirección): solo con datos reales de la app. Mientras Unity no envíe esas
+// métricas se muestra "No disponible"; el promedio pondera números y letras por cantidad de ejercicios.
+const precision = computed(() => {
+  const parts = (performance.value?.metrics ?? []).filter(
+    (m) => (m.key === 'numbers_precision' || m.key === 'letters_precision') && m.value !== null && m.samples > 0,
+  )
+  const samples = parts.reduce((sum, m) => sum + m.samples, 0)
+  if (!samples) return null
+  return { value: Math.round(parts.reduce((sum, m) => sum + (m.value as number) * m.samples, 0) / samples), samples }
+})
+
+const precisionMetric = computed<KpiMetric>(() => {
+  const base = { id: 'accuracy', title: 'Precisión promedio', icon: 'pi pi-bullseye', bgColor: '#fee2e2', iconColor: '#dc2626' }
+  if (performanceLoading.value && !performance.value) return { ...base, value: '…' }
+  if (!precision.value) {
+    return {
+      ...base,
+      value: 'No disponible',
+      detail: 'Se mostrará cuando la app envíe el detalle de los trazos (forma, orden y dirección).',
+      unavailable: true,
+    }
+  }
+  return { ...base, value: `${precision.value.value}%`, detail: `Basado en ${precision.value.samples} ejercicios · últimos 30 días` }
+})
+
+// KPI Metrics (la primera tarjeta es la conexión a la app: AppConnectionCard)
+const metrics = computed(() => [xpMetric.value, timeMetric.value, precisionMetric.value])
+
+// Rendimiento por área: porcentaje de ejercicios completados de cada ruta, con datos reales (GET /telemetry/route-progress).
+// Las áreas que todavía no existen en la app (Lógica, Atención, Memoria) se muestran vacías y marcadas "Próximamente";
+// nunca llevan un porcentaje de ejemplo. Lectura y Creatividad no se muestran: aún no se están implementando.
+interface AreaBar {
+  name: string
+  // null = sin datos (la app aún no envió ejercicios o el área no existe todavía)
+  percentage: number | null
+  note: string | null
+  icon: string
+  gradient: string
+}
+
+const routeStyles: Record<string, { icon: string; gradient: string }> = {
+  matematicas: { icon: numeroImg, gradient: 'linear-gradient(180deg, #34d399 0%, #10b981 100%)' },
+  escritura: { icon: letrasImg, gradient: 'linear-gradient(180deg, #818cf8 0%, #6366f1 100%)' },
+}
+const fallbackRouteStyle = { icon: letrasImg, gradient: 'linear-gradient(180deg, #94a3b8 0%, #64748b 100%)' }
+
+const upcomingAreas = [
+  { name: 'Lógica', icon: logicaImg, gradient: 'linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%)' },
+  { name: 'Atención', icon: atencionImg, gradient: 'linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%)' },
+  { name: 'Memoria', icon: memoriaImg, gradient: 'linear-gradient(180deg, #f472b6 0%, #ec4899 100%)' },
 ]
 
-// Performance by Area Chart Data
-const performanceAreas = [
-  {
-    name: 'Lectura',
-    percentage: 92,
-    icon: letrasImg,
-    gradient: 'linear-gradient(180deg, #818cf8 0%, #6366f1 100%)'
-  },
-  {
-    name: 'Matemáticas',
-    percentage: 85,
-    icon: numeroImg,
-    gradient: 'linear-gradient(180deg, #34d399 0%, #10b981 100%)'
-  },
-  {
-    name: 'Lógica',
-    percentage: 78,
-    icon: logicaImg,
-    gradient: 'linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%)'
-  },
-  {
-    name: 'Atención',
-    percentage: 83,
-    icon: atencionImg,
-    gradient: 'linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%)'
-  },
-  {
-    name: 'Memoria',
-    percentage: 80,
-    icon: memoriaImg,
-    gradient: 'linear-gradient(180deg, #f472b6 0%, #ec4899 100%)'
-  },
-  {
-    name: 'Creatividad',
-    percentage: 88,
-    icon: creatividadImg,
-    gradient: 'linear-gradient(180deg, #a78bfa 0%, #8b5cf6 100%)'
-  }
-]
+const performanceAreas = computed<AreaBar[]>(() => {
+  const progress = routeProgress.value
+  const routes: AreaBar[] = (progress?.routes ?? []).map((route) => ({
+    name: route.name,
+    percentage: progress?.hasData && route.total ? route.percentCompleted : null,
+    note: progress?.hasData && route.total ? null : 'Sin datos',
+    ...(routeStyles[route.id] ?? fallbackRouteStyle),
+  }))
+  const upcoming: AreaBar[] = upcomingAreas.map((area) => ({ ...area, percentage: null, note: 'Próximamente' }))
+  return [...routes, ...upcoming]
+})
 
 // Today's Activities List
 const todayActivities = [
@@ -124,46 +195,6 @@ const todayActivities = [
     icon: logicaImg,
     bgColor: '#fef3c7',
     completed: false
-  }
-]
-
-// Recent Activity Feed
-const recentActivities = [
-  {
-    id: 1,
-    text: 'Sofía completó',
-    highlight: 'Aventura de las letras',
-    time: 'Hace 20 min',
-    icon: 'pi pi-check-circle',
-    color: '#10b981',
-    bgColor: '#dcfce7'
-  },
-  {
-    id: 2,
-    text: 'Mateo alcanzó nuevo logro',
-    highlight: 'Experto en Sumatorias',
-    time: 'Hace 1 h',
-    icon: 'pi pi-star-fill',
-    color: '#f59e0b',
-    bgColor: '#fef3c7'
-  },
-  {
-    id: 3,
-    text: 'Lucía finalizó',
-    highlight: 'Diagnóstico inicial',
-    time: 'Hace 3 h',
-    icon: 'pi pi-clipboard',
-    color: '#6366f1',
-    bgColor: '#e0e7ff'
-  },
-  {
-    id: 4,
-    text: 'Daniel mejoró en Concentración',
-    highlight: '+12% esta semana',
-    time: 'Hace 1 día',
-    icon: 'pi pi-chart-line',
-    color: '#0284c7',
-    bgColor: '#e0f2fe'
   }
 ]
 
@@ -223,14 +254,16 @@ const calendarDays = [
           <span class="kpi-title">{{ metric.title }}</span>
         </div>
         <div class="kpi-bottom">
-          <span class="kpi-value">{{ metric.value }}</span>
-          <div class="kpi-trend">
-            <span class="trend-badge">
-              <i class="pi pi-arrow-up"></i> {{ metric.growth }}
+          <span class="kpi-value" :class="{ 'is-unavailable': metric.unavailable }">{{ metric.value }}</span>
+          <div v-if="metric.trend" class="kpi-trend">
+            <span class="trend-badge" :class="`is-${metric.trend.direction}`">
+              <i v-if="metric.trend.direction !== 'same'" :class="metric.trend.direction === 'up' ? 'pi pi-arrow-up' : 'pi pi-arrow-down'"></i>
+              {{ metric.trend.text }}
             </span>
-            <span class="trend-label">vs. mes anterior</span>
+            <span class="trend-label">{{ metric.trend.label }}</span>
           </div>
         </div>
+        <p v-if="metric.detail" class="kpi-detail">{{ metric.detail }}</p>
       </div>
     </section>
 
@@ -240,10 +273,7 @@ const calendarDays = [
       <div class="dashboard-card performance-card">
         <div class="card-header-row">
           <h2 class="card-title">Rendimiento por área</h2>
-          <div class="select-pill">
-            <span>Últimos 30 días</span>
-            <i class="pi pi-chevron-down"></i>
-          </div>
+          <span class="chart-caption">Ejercicios completados de cada área</span>
         </div>
 
         <div class="chart-container">
@@ -260,95 +290,36 @@ const calendarDays = [
           <!-- Bar Columns Grid -->
           <div class="chart-bars-row">
             <div v-for="area in performanceAreas" :key="area.name" class="bar-column">
-              <span class="bar-percent-label">{{ area.percentage }}%</span>
+              <span class="bar-percent-label" :class="{ 'is-empty': area.percentage === null }">
+                {{ area.percentage === null ? '—' : `${area.percentage}%` }}
+              </span>
               <div class="bar-track">
                 <div
+                  v-if="area.percentage !== null"
                   class="bar-fill"
                   :style="{ height: `${area.percentage}%`, background: area.gradient }"
                 ></div>
               </div>
-              <div class="bar-footer">
+              <div class="bar-footer" :class="{ 'is-upcoming': area.percentage === null }">
                 <div class="bar-icon-wrap">
                   <img :src="area.icon" :alt="area.name" class="bar-icon-img" />
                 </div>
                 <span class="bar-name">{{ area.name }}</span>
+                <span v-if="area.note" class="bar-note">{{ area.note }}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 2. Progreso por ruta (Donut Progress Card) -->
-      <div class="dashboard-card progress-route-card">
-        <h2 class="card-title">Progreso por ruta</h2>
-        
-        <div class="donut-center-wrap">
-          <div class="donut-graphic">
-            <svg viewBox="0 0 100 100" class="donut-svg">
-              <!-- Background Circle -->
-              <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f1f5f9" stroke-width="12" />
-              <!-- Cyan Layer -->
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                fill="transparent"
-                stroke="#38bdf8"
-                stroke-width="12"
-                stroke-dasharray="251.2"
-                stroke-dashoffset="60"
-                stroke-linecap="round"
-              />
-              <!-- Main Royal Blue Layer -->
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                fill="transparent"
-                stroke="#4f46e5"
-                stroke-width="12"
-                stroke-dasharray="251.2"
-                stroke-dashoffset="70"
-                stroke-linecap="round"
-              />
-            </svg>
-            <div class="donut-text">
-              <span class="donut-percentage">72%</span>
-              <span class="donut-label">Completado</span>
-            </div>
-          </div>
-
-          <!-- Donut Legend -->
-          <div class="donut-legend">
-            <div class="legend-item">
-              <span class="legend-dot dot-completed"></span>
-              <span class="legend-text">Completadas</span>
-              <strong class="legend-count">24</strong>
-            </div>
-            <div class="legend-item">
-              <span class="legend-dot dot-in-progress"></span>
-              <span class="legend-text">En progreso</span>
-              <strong class="legend-count">8</strong>
-            </div>
-            <div class="legend-item">
-              <span class="legend-dot dot-pending"></span>
-              <span class="legend-text">Pendientes</span>
-              <strong class="legend-count">6</strong>
-            </div>
-          </div>
-        </div>
-
-        <button type="button" class="btn-route-action">
-          <span>Ver ruta completa</span>
-          <i class="pi pi-arrow-right"></i>
-        </button>
-      </div>
+      <!-- 2. Progreso por ruta: un indicador circular por ruta (Matemáticas, Escritura), con datos reales -->
+      <DashboardRouteProgressCard :progress="routeProgress" :loading="routeLoading" :error="routeError" />
 
       <!-- 3. Tutor de (hijos con su formulario inicial) / Mi perfil (adulto y tester) -->
       <DashboardProfileSummaryCard />
     </section>
 
-    <!-- Bottom Section Grid: Calendar + Today Activities, Recent Activities, Quick Actions -->
+    <!-- Bottom Section Grid: Calendar + Today Activities, Quick Actions -->
     <section class="bottom-grid">
       <!-- 1. Calendario de actividades & Actividades de hoy -->
       <div class="dashboard-card calendar-activities-card">
@@ -418,29 +389,7 @@ const calendarDays = [
         </div>
       </div>
 
-      <!-- 2. Actividad Reciente Feed -->
-      <div class="dashboard-card recent-activity-card">
-        <div class="card-header-row">
-          <h2 class="card-title">Actividad reciente</h2>
-          <a href="#" class="view-all-link">Ver historial</a>
-        </div>
-
-        <div class="activity-feed">
-          <div v-for="item in recentActivities" :key="item.id" class="feed-item">
-            <div class="feed-icon-badge" :style="{ backgroundColor: item.bgColor, color: item.color }">
-              <i :class="item.icon"></i>
-            </div>
-            <div class="feed-content">
-              <p class="feed-text">
-                {{ item.text }} <strong>{{ item.highlight }}</strong>
-              </p>
-              <span class="feed-time">{{ item.time }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 3. Acciones Rápidas (2x2 Grid) -->
+      <!-- 2. Acciones Rápidas (2x2 Grid) -->
       <div class="dashboard-card quick-actions-card">
         <h2 class="card-title mb-3">Acciones rápidas</h2>
         
@@ -543,6 +492,13 @@ $color-border-subtle: #e2e8f0;
     }
   }
 
+  .kpi-detail {
+    margin: -0.4rem 0 0;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: #64748b;
+  }
+
   .kpi-bottom {
     display: flex;
     align-items: baseline;
@@ -553,6 +509,14 @@ $color-border-subtle: #e2e8f0;
       font-weight: 900;
       color: $color-text-dark;
       letter-spacing: -0.03em;
+
+      // Sin datos suficientes: atenuado y más pequeño, para que no parezca una cifra
+      &.is-unavailable {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #94a3b8;
+        letter-spacing: 0;
+      }
     }
 
     .kpi-trend {
@@ -567,6 +531,14 @@ $color-border-subtle: #e2e8f0;
         display: flex;
         align-items: center;
         gap: 0.2rem;
+
+        &.is-down {
+          color: #dc2626;
+        }
+
+        &.is-same {
+          color: #64748b;
+        }
       }
 
       .trend-label {
@@ -603,6 +575,12 @@ $color-border-subtle: #e2e8f0;
   letter-spacing: -0.01em;
 }
 
+.chart-caption {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
 .select-pill {
   display: flex;
   align-items: center;
@@ -615,17 +593,6 @@ $color-border-subtle: #e2e8f0;
   font-weight: 600;
   color: #64748b;
   cursor: pointer;
-}
-
-.view-all-link {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: $color-brand-indigo;
-  text-decoration: none;
-
-  &:hover {
-    text-decoration: underline;
-  }
 }
 
 // ----------------------------------------------------
@@ -683,6 +650,23 @@ $color-border-subtle: #e2e8f0;
       font-weight: 800;
       color: $color-text-dark;
       margin-bottom: 0.35rem;
+
+      &.is-empty {
+        color: #94a3b8;
+      }
+    }
+
+    // Áreas que la app todavía no tiene: atenuadas, con su aviso debajo
+    .bar-footer.is-upcoming {
+      opacity: 0.6;
+    }
+
+    .bar-note {
+      font-size: 0.62rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-align: center;
+      line-height: 1.1;
     }
 
     .bar-track {
@@ -731,113 +715,6 @@ $color-border-subtle: #e2e8f0;
   }
 }
 
-// Progress Route Donut
-.progress-route-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-
-  .donut-center-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.25rem;
-    margin: 1rem 0;
-  }
-
-  .donut-graphic {
-    position: relative;
-    width: 140px;
-    height: 140px;
-
-    .donut-svg {
-      transform: rotate(-90deg);
-      width: 100%;
-      height: 100%;
-    }
-
-    .donut-text {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-
-      .donut-percentage {
-        font-size: 1.75rem;
-        font-weight: 900;
-        color: $color-text-dark;
-        line-height: 1;
-      }
-
-      .donut-label {
-        font-size: 0.72rem;
-        color: #94a3b8;
-        font-weight: 600;
-      }
-    }
-  }
-
-  .donut-legend {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.82rem;
-
-      .legend-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        margin-right: 0.4rem;
-
-        &.dot-completed { background-color: #4f46e5; }
-        &.dot-in-progress { background-color: #38bdf8; }
-        &.dot-pending { background-color: #cbd5e1; }
-      }
-
-      .legend-text {
-        flex: 1;
-        color: #64748b;
-      }
-
-      .legend-count {
-        color: $color-text-dark;
-      }
-    }
-  }
-
-  .btn-route-action {
-    width: 100%;
-    padding: 0.75rem;
-    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-    color: #ffffff;
-    border: none;
-    border-radius: 12px;
-    font-size: 0.88rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    box-shadow: 0 6px 16px -3px rgba(79, 70, 229, 0.4);
-    transition: all 0.2s ease;
-
-    &:hover {
-      background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-      transform: translateY(-1px);
-    }
-  }
-}
-
 // ----------------------------------------------------
 // Bottom Grid
 // ----------------------------------------------------
@@ -860,6 +737,11 @@ $color-border-subtle: #e2e8f0;
   display: grid;
   grid-template-columns: 1.1fr 1.3fr;
   gap: 1.5rem;
+
+  // Ocupa también la columna central, para no dejar un hueco en la fila
+  @media (min-width: 1281px) {
+    grid-column: span 2;
+  }
 
   @media (max-width: 640px) {
     grid-template-columns: 1fr;
@@ -1069,50 +951,6 @@ $color-border-subtle: #e2e8f0;
 
       &:hover {
         background-color: #e0e7ff;
-      }
-    }
-  }
-}
-
-// Recent Activity Feed
-.recent-activity-card {
-  .activity-feed {
-    display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
-
-    .feed-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.75rem;
-
-      .feed-icon-badge {
-        width: 32px;
-        height: 32px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.95rem;
-        flex-shrink: 0;
-      }
-
-      .feed-content {
-        .feed-text {
-          font-size: 0.82rem;
-          margin: 0 0 0.15rem 0;
-          color: $color-text-dark;
-          line-height: 1.3;
-
-          strong {
-            color: #1e1b4b;
-          }
-        }
-
-        .feed-time {
-          font-size: 0.72rem;
-          color: #94a3b8;
-        }
       }
     }
   }

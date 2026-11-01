@@ -25,7 +25,9 @@ export default defineNuxtConfig({
       theme: {
         preset: Aura,
         options: {
-          darkModeSelector: 'system',
+          // La interfaz solo tiene diseño claro: con 'system' los campos de PrimeVue (contraseña, selectores...) se
+          // pintaban oscuros en equipos con modo oscuro y desentonaban con el resto de la pantalla
+          darkModeSelector: false,
           cssLayer: false
         }
       }

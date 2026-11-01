@@ -41,7 +41,7 @@ export interface PerformanceResponse {
   alerts: PerformanceAlert[]
 }
 
-const apiErrorMessage = (err: any, fallback: string) => {
+export const apiErrorMessage = (err: any, fallback: string) => {
   const message = err?.data?.message
   if (Array.isArray(message) && message.length > 0) return message.join('. ')
   if (typeof message === 'string' && message.trim()) return message

@@ -6,6 +6,27 @@ Todos los cambios notables realizados en este proyecto se documentarán en este 
 
 ## [Unreleased]
 
+#### 🎨 Login legible y "Rendimiento por área" con datos reales (2026-11-01)
+- **Login (`pages/login.vue`):** el campo de contraseña se veía gris oscuro con texto casi ilegible y los campos de texto usaban Arial en vez de la fuente del sitio. Causa: `main.scss` fuerza fondo oscuro y texto blanco con `!important` a todos los campos de PrimeVue (resto de un tema oscuro anterior). Se corrigió solo en el login (es la única pantalla con campos de PrimeVue). Además: campos de 52 px con la misma fuente, texto de 16 px, etiquetas en negrita, placeholder y subtítulo con más contraste, foco con aro visible y botones y enlaces más grandes.
+- `nuxt.config.ts`: `darkModeSelector: false`. La interfaz solo tiene diseño claro; con `'system'` los componentes de PrimeVue podían pintarse oscuros en equipos con modo oscuro.
+- **Pendiente:** la regla global de `main.scss` (`.p-inputtext`, `.p-select`…) sigue forzando el tema oscuro; si se usan más campos de PrimeVue en pantallas claras habrá que quitarla o reemplazarla.
+- **"Rendimiento por área"** (`pages/dashboard.vue`): mostraba porcentajes fijos de la plantilla original (92 %, 85 %, 78 %…) que no venían de ninguna parte. Ahora cada barra es el porcentaje de ejercicios completados de esa ruta (`GET /telemetry/route-progress`): Matemáticas y Escritura con datos reales ("Sin datos" mientras la app no envíe ejercicios) y Lógica, Atención y Memoria vacías con "Próximamente". Lectura y Creatividad se quitaron del gráfico porque aún no se están implementando. Se quitó el selector "Últimos 30 días", que no hacía nada.
+
+#### 🧑‍🏫 "Actividad reciente" pasa al dashboard de profesores (2026-10-31)
+- La tarjeta sale de `pages/dashboard.vue` (tutor, adulto y tester) y se muestra en `pages/teacher/dashboard.vue`, con el nuevo componente `components/teacher/RecentActivityCard.vue`. El calendario ocupa ahora el espacio que dejó libre.
+- **Sin datos de ejemplo**: el profesor ve "Todavía no hay actividad para mostrar" porque `GET /teacher/dashboard` no entrega actividad. Falta un endpoint en el backend. Se quitó "Ver historial", que no llevaba a ninguna página.
+
+#### 🏆 Dashboard con datos reales: XP, tiempo mensual, precisión y progreso por ruta (2026-10-31)
+Requiere la migración `20261031_exercise_attempts_and_xp.sql` del backend. Sin ella estas tarjetas muestran el mensaje de error (no cifras).
+- **"Actividades completadas" pasó a "Puntaje por actividades completadas"**: muestra el XP acumulado (`GET /telemetry/xp`) y cuántos ejercicios aprobados lo forman. Sin tendencia mensual: no hay datos para calcularla. Los niveles no están implementados.
+- **Tiempo total de juego**: tiempo con la app abierta **este mes** y comparación con el **mismo tramo del mes anterior** (`GET /presence/monthly-usage`, hora de Colombia): porcentaje con flecha (verde sube, rojo baja), diferencia de tiempo y el rango de días ("del 1 al 31 de octubre"). Si el mes anterior no tiene tiempo muestra "Sin base" en vez de un porcentaje. Mide conexión de la app, no juego activo.
+- **Precisión promedio**: promedia la precisión real de los trazos (`GET /telemetry/performance`, últimos 30 días) y muestra **"No disponible"** mientras Unity no envíe esas métricas. No hay valores de ejemplo.
+- **Progreso por ruta** (`components/dashboard/RouteProgressCard.vue`): una tarjeta con un indicador circular por ruta (Matemáticas y Escritura) con completadas / en progreso / pendientes (`GET /telemetry/route-progress`). Si la app aún no envió ejercicios dice "Aún no recibimos ejercicios de la app" en lugar de mostrar todo como pendiente. Cada ruta sale de la lista que devuelve el backend, así que agregar rutas no requiere cambiar la tarjeta.
+- Cada tarjeta carga y falla por separado, y todas se actualizan al cambiar de hijo en el menú de la cuenta.
+- Nuevos: `composables/useLearningStats.ts` (`useRouteProgress`, `useXp`, `useMonthlyUsage`), `utils/duration.ts`. `apiErrorMessage` ahora se exporta desde `useTelemetry.ts`. Se eliminó el donut estático (72 %, 24/8/6) de `pages/dashboard.vue`.
+- **Sigue siendo de ejemplo en el dashboard** (fuera de este alcance): "Rendimiento por área", "Actividades de hoy", "Actividad reciente" y el calendario (`pages/dashboard.vue`).
+- Verificado con `npm run build` (correcto). No se probó en navegador con datos reales: el backend en marcha necesita la migración aplicada.
+
 #### 🔄 Tipo de perfil actualizado al renovar la sesión (2026-10-29)
 - `plugins/api.ts`: al renovar el token (`POST /auth/refresh`) también se actualiza la cookie `profile_type` con el valor que recalcula el backend. Antes un cambio de rol, o un adulto que agrega un hijo y pasa a tutor, solo se reflejaba en el siguiente inicio de sesión.
 

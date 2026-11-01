@@ -657,32 +657,34 @@ $border-focus: #3b50df;
   backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 28px;
-  padding: 2.35rem 2.25rem;
+  padding: 2.5rem 2.4rem 2.25rem;
   box-shadow:
     0 20px 40px -15px rgba(59, 80, 223, 0.12),
     0 10px 20px -5px rgba(0, 0, 0, 0.04),
     0 0 0 1px rgba(226, 232, 240, 0.8);
 
   @media (max-width: 480px) {
-    padding: 2rem 1.5rem;
+    padding: 2rem 1.35rem 1.75rem;
   }
 }
 
 .card-header {
   text-align: center;
-  margin-bottom: 1.6rem;
+  margin-bottom: 1.75rem;
 
   .card-title {
-    font-size: 1.65rem;
+    font-size: 1.7rem;
     font-weight: 800;
+    line-height: 1.2;
     color: $text-dark-title;
-    margin: 0 0 0.35rem 0;
+    margin: 0 0 0.5rem 0;
     letter-spacing: -0.02em;
   }
 
   .card-subtitle {
-    font-size: 0.92rem;
-    color: $text-muted;
+    font-size: 1rem;
+    line-height: 1.45;
+    color: #526079;
     margin: 0;
   }
 }
@@ -717,18 +719,18 @@ $border-focus: #3b50df;
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  gap: 1.25rem;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.5rem;
 
   label {
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: $text-dark-body;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: $text-dark-title;
   }
 }
 
@@ -740,32 +742,40 @@ $border-focus: #3b50df;
 
   .input-icon {
     position: absolute;
-    left: 14px;
-    font-size: 1.05rem;
-    color: #94a3b8;
+    left: 16px;
+    font-size: 1.1rem;
+    color: #64748b;
     z-index: 2;
     pointer-events: none;
   }
 
   .custom-input {
     width: 100%;
-    height: 48px;
-    padding: 0.75rem 1rem 0.75rem 2.75rem;
-    background-color: #ffffff;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 12px;
-    font-size: 0.95rem;
-    color: #1e293b;
+    height: 52px;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    background-color: #f8fafc;
+    border: 1.5px solid #cfd8e5;
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #0f172a;
     outline: none;
     transition: all 0.2s ease;
 
     &::placeholder {
-      color: #94a3b8;
+      color: #6b7b93;
+      font-weight: 400;
+    }
+
+    &:hover:not(:disabled) {
+      border-color: #aab6c8;
     }
 
     &:focus {
+      background-color: #ffffff;
       border-color: $color-brand-blue;
-      box-shadow: 0 0 0 3px rgba(59, 80, 223, 0.15);
+      box-shadow: 0 0 0 4px rgba(59, 80, 223, 0.16);
     }
 
     &:disabled {
@@ -777,32 +787,42 @@ $border-focus: #3b50df;
   :deep(.prime-password) {
     width: 100%;
 
+    // Mismo aspecto que el campo de usuario. Hace falta !important: main.scss fuerza fondo oscuro y texto blanco a todos
+    // los campos de PrimeVue (resto de un tema oscuro anterior) y en esta pantalla clara quedaban casi ilegibles.
     .p-password-input {
       width: 100%;
-      height: 48px;
-      padding-left: 2.75rem !important;
-      padding-right: 2.75rem !important;
-      background-color: #ffffff;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 12px;
-      font-size: 0.95rem;
-      color: #1e293b;
+      height: 52px;
+      padding-left: 3rem !important;
+      padding-right: 3rem !important;
+      background: #f8fafc !important;
+      border: 1.5px solid #cfd8e5 !important;
+      border-radius: 14px !important;
+      font-family: inherit !important;
+      font-size: 1rem !important;
+      font-weight: 500;
+      color: #0f172a !important;
       outline: none;
       transition: all 0.2s ease;
 
       &::placeholder {
-        color: #94a3b8;
+        color: #6b7b93 !important;
+        font-weight: 400;
+      }
+
+      &:hover:not(:disabled) {
+        border-color: #aab6c8 !important;
       }
 
       &:focus {
-        border-color: $color-brand-blue;
-        box-shadow: 0 0 0 3px rgba(59, 80, 223, 0.15);
+        background: #ffffff !important;
+        border-color: $color-brand-blue !important;
+        box-shadow: 0 0 0 4px rgba(59, 80, 223, 0.16) !important;
       }
     }
 
     .p-password-toggle-mask-icon {
-      right: 14px;
-      color: #94a3b8;
+      right: 16px;
+      color: #64748b;
     }
   }
 }
@@ -813,7 +833,7 @@ $border-focus: #3b50df;
   margin-top: -0.25rem;
 
   .forgot-link {
-    font-size: 0.84rem;
+    font-size: 0.9rem;
     font-weight: 600;
     color: $color-brand-blue;
     text-decoration: none;
@@ -828,12 +848,13 @@ $border-focus: #3b50df;
 
 .submit-button {
   width: 100%;
-  height: 48px;
+  height: 52px;
+  font-family: inherit;
   background: linear-gradient(135deg, #3b50df 0%, #4338ca 100%);
   border: none;
   border-radius: 12px;
   color: #ffffff;
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   cursor: pointer;
   margin-top: 0.25rem;
@@ -881,15 +902,16 @@ $border-focus: #3b50df;
   }
 
   .divider-text {
-    font-size: 0.82rem;
-    color: #94a3b8;
+    font-size: 0.88rem;
+    color: #64748b;
     font-weight: 500;
   }
 }
 
 .social-button {
   width: 100%;
-  height: 46px;
+  height: 50px;
+  font-family: inherit;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -897,7 +919,7 @@ $border-focus: #3b50df;
   background-color: #ffffff;
   border: 1.5px solid #e2e8f0;
   border-radius: 12px;
-  font-size: 0.92rem;
+  font-size: 0.98rem;
   font-weight: 600;
   color: #334155;
   cursor: pointer;
@@ -916,8 +938,8 @@ $border-focus: #3b50df;
 
 .register-footer {
   text-align: center;
-  font-size: 0.88rem;
-  color: #64748b;
+  font-size: 0.95rem;
+  color: #526079;
   margin-top: 0.5rem;
   display: flex;
   justify-content: center;
