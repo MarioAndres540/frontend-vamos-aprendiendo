@@ -14,6 +14,14 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
 const hasData = computed(() => props.progress?.hasData === true)
 
+// A qué corresponde cada porcentaje; coincide con las tarjetas de "Tu ruta" en Unity. Una ruta nueva sin texto aquí
+// muestra solo su nombre.
+const routeDescriptions: Record<string, string> = {
+  matematicas: 'Números del 0 al 9',
+  escritura: 'Vocales, minúsculas y mayúsculas',
+  consonantes: 'Consonantes, minúsculas y mayúsculas',
+}
+
 // Dos arcos sobre el aro: completadas (desde arriba) y, a continuación, en progreso; el resto es el fondo (pendientes)
 const arcs = (route: RouteProgress) => {
   if (!route.total) return { completed: 0, inProgress: 0 }
@@ -33,7 +41,15 @@ const ariaLabel = (route: RouteProgress) =>
   <div class="dashboard-card progress-route-card">
     <h2 class="route-card-title">Progreso por ruta</h2>
 
-    <p v-if="loading && !progress" class="route-note">Cargando el progreso…</p>
+    <UiSkeletonRegion v-if="loading && !progress" label="Cargando el progreso por ruta…" gap="0.5rem">
+      <div class="rings">
+        <div v-for="n in 3" :key="n" class="ring-item">
+          <UiSkeleton circle height="112px" />
+          <UiSkeleton width="60%" height="1rem" />
+          <UiSkeleton width="80%" height="0.8rem" />
+        </div>
+      </div>
+    </UiSkeletonRegion>
     <p v-else-if="error && !progress" class="route-note is-error">{{ error }}</p>
 
     <template v-else-if="progress">
@@ -73,6 +89,7 @@ const ariaLabel = (route: RouteProgress) =>
           </div>
 
           <h3 class="ring-name">{{ route.name }}</h3>
+          <p v-if="routeDescriptions[route.id]" class="ring-description">{{ routeDescriptions[route.id] }}</p>
 
           <p v-if="!route.total" class="ring-empty">Sin ejercicios disponibles</p>
           <p v-else-if="!hasData" class="ring-empty">{{ route.total }} ejercicios disponibles</p>
@@ -130,7 +147,7 @@ $color-text-body: #334155;
 
 .rings {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 1rem;
 }
 
@@ -190,6 +207,14 @@ $color-text-body: #334155;
   font-size: 0.95rem;
   font-weight: 800;
   color: $color-text-body;
+}
+
+.ring-description {
+  margin: -0.3rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  color: #94a3b8;
+  text-align: center;
 }
 
 .ring-empty {

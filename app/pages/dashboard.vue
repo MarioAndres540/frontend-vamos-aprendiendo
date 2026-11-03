@@ -19,7 +19,7 @@ definePageMeta({
   headerSubtitle: 'Resumen general del aprendizaje',
   showsSelectedStudent: true,
   middleware: 'profile-access',
-  allowedProfiles: ['tutor', 'adulto', 'tester'],
+  allowedProfiles: ['tutor', 'adulto', 'tester', 'estudiante'],
 })
 
 const selectedTimeRange = ref('30d')
@@ -54,6 +54,8 @@ interface KpiMetric {
   id: string
   title: string
   value: string
+  // Esperando la respuesta del backend: se muestra un esqueleto en lugar del valor
+  loading?: boolean
   detail?: string
   trend?: KpiTrend
   // Valor que aún no existe (no hay datos suficientes): se muestra atenuado, nunca como un número inventado
@@ -69,7 +71,7 @@ const monthName = (iso: string) =>
 // Puntaje por actividades completadas: XP acumulado (10 por cada letra o número aprobado, una sola vez)
 const xpMetric = computed<KpiMetric>(() => {
   const base = { id: 'xp', title: 'Puntaje por actividades completadas', icon: 'pi pi-trophy', bgColor: '#fef3c7', iconColor: '#d97706' }
-  if (xpLoading.value && !xp.value) return { ...base, value: '…' }
+  if (xpLoading.value && !xp.value) return { ...base, value: '', loading: true }
   if (!xp.value) return { ...base, value: '—', detail: xpError.value ?? undefined, unavailable: true }
   const count = xp.value.rewardsCount
   return {
@@ -82,7 +84,7 @@ const xpMetric = computed<KpiMetric>(() => {
 // Tiempo con la app abierta este mes frente al mismo tramo del mes anterior (hora de Colombia)
 const timeMetric = computed<KpiMetric>(() => {
   const base = { id: 'time', title: 'Tiempo total de juego', icon: 'pi pi-clock', bgColor: '#dbeafe', iconColor: '#2563eb' }
-  if (monthlyLoading.value && !monthly.value) return { ...base, value: '…' }
+  if (monthlyLoading.value && !monthly.value) return { ...base, value: '', loading: true }
   if (!monthly.value) return { ...base, value: '—', detail: monthlyError.value ?? undefined, unavailable: true }
 
   const { current, previous, comparison, elapsedDays } = monthly.value
@@ -116,7 +118,7 @@ const precision = computed(() => {
 
 const precisionMetric = computed<KpiMetric>(() => {
   const base = { id: 'accuracy', title: 'Precisión promedio', icon: 'pi pi-bullseye', bgColor: '#fee2e2', iconColor: '#dc2626' }
-  if (performanceLoading.value && !performance.value) return { ...base, value: '…' }
+  if (performanceLoading.value && !performance.value) return { ...base, value: '', loading: true }
   if (!precision.value) {
     return {
       ...base,
@@ -146,6 +148,7 @@ interface AreaBar {
 const routeStyles: Record<string, { icon: string; gradient: string }> = {
   matematicas: { icon: numeroImg, gradient: 'linear-gradient(180deg, #34d399 0%, #10b981 100%)' },
   escritura: { icon: letrasImg, gradient: 'linear-gradient(180deg, #818cf8 0%, #6366f1 100%)' },
+  consonantes: { icon: letrasImg, gradient: 'linear-gradient(180deg, #fb923c 0%, #f97316 100%)' },
 }
 const fallbackRouteStyle = { icon: letrasImg, gradient: 'linear-gradient(180deg, #94a3b8 0%, #64748b 100%)' }
 
@@ -155,12 +158,17 @@ const upcomingAreas = [
   { name: 'Memoria', icon: memoriaImg, gradient: 'linear-gradient(180deg, #f472b6 0%, #ec4899 100%)' },
 ]
 
+// Mientras llega el progreso por ruta, el gráfico muestra columnas de esqueleto (la altura es solo decoración)
+const areasLoading = computed(() => routeLoading.value && !routeProgress.value)
+const chartSkeletonHeights = ['72%', '48%', '84%', '58%', '66%', '40%', '76%']
+
 const performanceAreas = computed<AreaBar[]>(() => {
   const progress = routeProgress.value
   const routes: AreaBar[] = (progress?.routes ?? []).map((route) => ({
     name: route.name,
     percentage: progress?.hasData && route.total ? route.percentCompleted : null,
-    note: progress?.hasData && route.total ? null : 'Sin datos',
+    // Con datos, el pie del gráfico dice a qué corresponde el porcentaje (ej. "4 de 10"); lo mismo que ve el niño en Unity
+    note: progress?.hasData && route.total ? `${route.completed} de ${route.total}` : 'Sin datos',
     ...(routeStyles[route.id] ?? fallbackRouteStyle),
   }))
   const upcoming: AreaBar[] = upcomingAreas.map((area) => ({ ...area, percentage: null, note: 'Próximamente' }))
@@ -198,34 +206,6 @@ const todayActivities = [
   }
 ]
 
-// Quick Action Buttons
-const quickActions = [
-  {
-    id: 'diag',
-    label: 'Ver Diagnóstico',
-    icon: 'pi pi-clipboard',
-    bgColor: '#f5f3ff',
-    color: '#7c3aed',
-    route: '/diagnostics'
-  },
-  {
-    id: 'act',
-    label: 'Ver Actividades',
-    icon: 'pi pi-play',
-    bgColor: '#f0fdf4',
-    color: '#16a34a',
-    route: '/activities'
-  },
-  {
-    id: 'analytics',
-    label: 'Ver Analíticas',
-    icon: 'pi pi-chart-bar',
-    bgColor: '#f8fafc',
-    color: '#475569',
-    route: '/analytics'
-  }
-]
-
 // Mini Calendar Days
 const currentDay = 17
 const calendarDays = [
@@ -254,7 +234,8 @@ const calendarDays = [
           <span class="kpi-title">{{ metric.title }}</span>
         </div>
         <div class="kpi-bottom">
-          <span class="kpi-value" :class="{ 'is-unavailable': metric.unavailable }">{{ metric.value }}</span>
+          <UiSkeleton v-if="metric.loading" width="7rem" height="2rem" radius="10px" />
+          <span v-else class="kpi-value" :class="{ 'is-unavailable': metric.unavailable }">{{ metric.value }}</span>
           <div v-if="metric.trend" class="kpi-trend">
             <span class="trend-badge" :class="`is-${metric.trend.direction}`">
               <i v-if="metric.trend.direction !== 'same'" :class="metric.trend.direction === 'up' ? 'pi pi-arrow-up' : 'pi pi-arrow-down'"></i>
@@ -263,7 +244,8 @@ const calendarDays = [
             <span class="trend-label">{{ metric.trend.label }}</span>
           </div>
         </div>
-        <p v-if="metric.detail" class="kpi-detail">{{ metric.detail }}</p>
+        <UiSkeleton v-if="metric.loading" width="80%" height="0.8rem" />
+        <p v-else-if="metric.detail" class="kpi-detail">{{ metric.detail }}</p>
       </div>
     </section>
 
@@ -276,7 +258,9 @@ const calendarDays = [
           <span class="chart-caption">Ejercicios completados de cada área</span>
         </div>
 
-        <div class="chart-container">
+        <div class="chart-container" :class="{ 'is-loading': areasLoading }">
+          <!-- Mientras llega el progreso, el arte de la pestaña se dibuja detrás de las columnas de esqueleto -->
+          <UiLoadingArt v-if="areasLoading" variant="inicio" class="chart-art" />
           <!-- Y-Axis Ticks -->
           <div class="chart-y-axis">
             <span>100%</span>
@@ -289,7 +273,19 @@ const calendarDays = [
 
           <!-- Bar Columns Grid -->
           <div class="chart-bars-row">
-            <div v-for="area in performanceAreas" :key="area.name" class="bar-column">
+            <template v-if="areasLoading">
+              <div v-for="h in chartSkeletonHeights" :key="h" class="bar-column" aria-hidden="true">
+                <UiSkeleton width="28px" height="0.8rem" />
+                <div class="bar-track">
+                  <UiSkeleton width="100%" :height="h" radius="8px 8px 0 0" />
+                </div>
+                <div class="bar-footer">
+                  <UiSkeleton circle height="28px" />
+                  <UiSkeleton width="44px" height="0.6rem" />
+                </div>
+              </div>
+            </template>
+            <div v-for="area in performanceAreas" v-show="!areasLoading" :key="area.name" class="bar-column">
               <span class="bar-percent-label" :class="{ 'is-empty': area.percentage === null }">
                 {{ area.percentage === null ? '—' : `${area.percentage}%` }}
               </span>
@@ -312,14 +308,11 @@ const calendarDays = [
         </div>
       </div>
 
-      <!-- 2. Progreso por ruta: un indicador circular por ruta (Matemáticas, Escritura), con datos reales -->
+      <!-- 2. Progreso por ruta: un indicador circular por ruta, con datos reales (ocupa dos columnas para que quepan las tres rutas) -->
       <DashboardRouteProgressCard :progress="routeProgress" :loading="routeLoading" :error="routeError" />
-
-      <!-- 3. Tutor de (hijos con su formulario inicial) / Mi perfil (adulto y tester) -->
-      <DashboardProfileSummaryCard />
     </section>
 
-    <!-- Bottom Section Grid: Calendar + Today Activities, Quick Actions -->
+    <!-- Bottom Section Grid: Calendar + Today Activities, Tutor de -->
     <section class="bottom-grid">
       <!-- 1. Calendario de actividades & Actividades de hoy -->
       <div class="dashboard-card calendar-activities-card">
@@ -389,25 +382,8 @@ const calendarDays = [
         </div>
       </div>
 
-      <!-- 2. Acciones Rápidas (2x2 Grid) -->
-      <div class="dashboard-card quick-actions-card">
-        <h2 class="card-title mb-3">Acciones rápidas</h2>
-        
-        <div class="quick-grid">
-          <NuxtLink
-            v-for="action in quickActions"
-            :key="action.id"
-            :to="action.route"
-            class="quick-action-tile"
-            :style="{ backgroundColor: action.bgColor }"
-          >
-            <div class="quick-icon-wrap" :style="{ color: action.color }">
-              <i :class="action.icon"></i>
-            </div>
-            <span class="quick-label">{{ action.label }}</span>
-          </NuxtLink>
-        </div>
-      </div>
+      <!-- 2. Tutor de (hijos con su formulario inicial) / Mi perfil (adulto y tester) -->
+      <DashboardProfileSummaryCard />
     </section>
   </main>
 </template>
@@ -600,7 +576,8 @@ $color-border-subtle: #e2e8f0;
 // ----------------------------------------------------
 .middle-grid {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 1fr;
+  // Rendimiento por área + Progreso por ruta (ancho de dos columnas del bloque inferior)
+  grid-template-columns: 1.6fr 2fr;
   gap: 1.25rem;
 
   @media (max-width: 1280px) {
@@ -615,6 +592,7 @@ $color-border-subtle: #e2e8f0;
 // Performance Chart
 .performance-card {
   .chart-container {
+    position: relative;
     display: flex;
     gap: 1rem;
     height: 250px;
@@ -628,6 +606,22 @@ $color-border-subtle: #e2e8f0;
     font-size: 0.72rem;
     color: #94a3b8;
     padding-bottom: 3.5rem;
+  }
+
+  // El arte va detrás de las columnas (un elemento posicionado se pinta encima de los demás sin z-index)
+  .chart-art {
+    opacity: 0.9;
+  }
+
+  // Mientras carga, las columnas dejan ver el arte que hay detrás
+  .chart-container.is-loading .bar-track {
+    background-color: rgba(241, 245, 249, 0.45);
+  }
+
+  .chart-y-axis,
+  .chart-bars-row {
+    position: relative;
+    z-index: 1;
   }
 
   .chart-bars-row {
@@ -956,47 +950,21 @@ $color-border-subtle: #e2e8f0;
   }
 }
 
-// Quick Actions 2x2
-.quick-actions-card {
-  .quick-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
+// Aparición suave de cada bloque cuando reemplaza al esqueleto
+@keyframes dashboard-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 
-    .quick-action-tile {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 1.15rem 0.75rem;
-      border-radius: 16px;
-      text-decoration: none;
-      transition: all 0.2s ease;
-      cursor: pointer;
-
-      &:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
-      }
-
-      // Con un número impar de acciones, la última ocupa toda la fila
-      &:last-child:nth-child(odd) {
-        grid-column: 1 / -1;
-      }
-
-      .quick-icon-wrap {
-        font-size: 1.45rem;
-        margin-bottom: 0.4rem;
-      }
-
-      .quick-label {
-        font-size: 0.78rem;
-        font-weight: 700;
-        color: $color-text-dark;
-        line-height: 1.25;
-      }
-    }
+@media (prefers-reduced-motion: no-preference) {
+  .dashboard-body > section {
+    animation: dashboard-reveal 0.28s ease-out both;
   }
 }
 </style>

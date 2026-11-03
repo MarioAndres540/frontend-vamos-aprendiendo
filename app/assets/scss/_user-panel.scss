@@ -210,3 +210,22 @@ $tone-reinforce: #9a3412;
   font-size: 0.8rem;
   line-height: 1.45;
 }
+
+// Aparición suave del contenido cuando reemplaza al esqueleto (al cambiar de pestaña o terminar de cargar).
+// Solo para quien no pidió reducir el movimiento.
+@keyframes panel-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .panel-body > :not([aria-busy]) {
+    animation: panel-reveal 0.28s ease-out both;
+  }
+}

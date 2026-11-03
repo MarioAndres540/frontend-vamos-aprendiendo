@@ -6,6 +6,55 @@ Todos los cambios notables realizados en este proyecto se documentarán en este 
 
 ## [Unreleased]
 
+#### 🧩 Dashboard: espacio para las tres rutas (2026-11-03)
+- Se quitó la tarjeta "Acciones rápidas" del dashboard. "Tutor de" / "Mi perfil" pasa a su lugar, junto al calendario.
+- "Progreso por ruta" ocupa ahora dos columnas, así las tres rutas (Matemáticas, Escritura y Consonantes) caben en una fila sin deformar la tarjeta.
+#### 📊 Ruta Consonantes y porcentajes explicados (2026-11-03)
+- "Progreso por ruta" muestra Consonantes como tercera ruta y bajo cada nombre qué cubre (ej. "Vocales, minúsculas y mayúsculas"); el gráfico "Rendimiento por área" indica "X de Y" ejercicios. Antes las consonantes no contaban: eran ejercicios inactivos del catálogo (ver migración `20261103_consonants_route.sql`).
+#### 🧑‍🏫 Indicadores del grupo y seguimiento de cada estudiante para el profesor (2026-11-02)
+Spec: `backend/docs/specs/0001-modulo-profesor.md`. Solo muestra datos del colegio, nunca los del hogar.
+- **Dashboard del profesor** (`pages/teacher/dashboard.vue`):
+  - El grupo y la materia elegidos van en la URL (`?asignacion=`), así que al volver del seguimiento se conservan.
+  - Indicadores del grupo: matriculados (y cuántos tienen licencia vigente), activos en el colegio en los últimos 7 días y dominio promedio de la materia (cuántos tienen actividad).
+  - Listado: dominio con barra, aprobados, intentos y último intento. Filtro "Solo sin actividad" y búsqueda. Sin documentos.
+- **Nueva página de seguimiento** (`pages/teacher/assignments/[assignmentId]/students/[studentId].vue`):
+  - Datos del estudiante: documento, fecha de nacimiento, colegio, grado, grupo y materias con ese profesor.
+  - XP y tiempo de juego en el colegio.
+  - Por cada materia: exactitud promedio, último intento y progreso por ruta, con el estado de cada ejercicio (aprobado, en progreso o pendiente), intentos y mejor exactitud.
+  - Un estudiante ajeno muestra "Este estudiante no está en tus grupos".
+- Nuevos: `composables/useTeacherAssignment.ts` (`useAssignmentSummary`, `useTeacherStudent`) y `utils/dates.ts` (`relativeDay`, `longDate`).
+- Sin pruebas automáticas: el frontend no tiene Vitest ni Playwright.
+
+#### 🏫 Perfil estudiante y dashboard del profesor por grupo (2026-11-02)
+Requiere el backend con las migraciones del 2026-11-02.
+- **Nuevo perfil `estudiante`** (cuenta propia de un alumno de colegio): entra al dashboard con sus propios datos y puede usar Inicio, Actividades, Analíticas y Biblioteca. No ve Diagnósticos ni Configuración, ni la acción rápida "Ver Diagnóstico". Su tarjeta "Mi perfil" muestra su colegio y grado, sin invitar al formulario inicial.
+- **Dashboard del profesor** (`pages/teacher/dashboard.vue`): ya no lista todos los estudiantes del colegio. Muestra sus colegios, el número de grupos y estudiantes a cargo, un selector de grupo y materia (cuando tiene varios) y los estudiantes de ese grupo, con su edad y si tienen cuenta para jugar. Sin número de documento. Búsqueda sin tildes ni mayúsculas (`normalizeText` en `utils/text.ts`).
+- `utils/profile-routes.ts`, `layouts/user-panel.vue`, `components/dashboard/ProfileSummaryCard.vue`, `composables/useTeacherDashboard.ts` actualizados.
+
+#### 🎨 Arte generativo en las esperas: un estudio distinto por pestaña (2026-11-02)
+- Al cambiar de pestaña, mientras llega la información, cada una muestra su propio **arte generativo con semilla** (técnica del skill Algorithmic Art), dentro de los esqueletos de carga:
+  - **Inicio:** Constelación (puntos que se enlazan), detrás de las columnas del gráfico.
+  - **Diagnósticos:** Interferencia (ondas que se suman en una rejilla de puntos).
+  - **Actividades:** Flujo (partículas con estelas sobre un campo de ruido).
+  - **Analíticas:** Pulso de datos (columnas que respiran y una línea que las recorre).
+  - **Biblioteca:** Filotaxia (semillas en ángulo áureo).
+  - **Configuración:** Órbitas (curvas de engrane).
+- Cada carga usa una semilla nueva (la misma semilla repite la composición). Con "reducir movimiento" el arte se queda en una imagen; en una pestaña en segundo plano no dibuja; es decorativo (`aria-hidden`).
+- Nuevos: `utils/loading-art.ts`, `components/ui/UiLoadingArt.vue`, `components/skeleton/SkeletonArtBanner.vue`; `SkeletonSubjectHeader` recibe la prop `art`. Filosofía del movimiento y uso: `docs/algorithmic-loading-art.md`.
+- Se dibuja con Canvas 2D (no p5.js) para no descargar más de 1 MB justo cuando el usuario espera.
+- Verificado en el navegador simulando un backend lento (las seis pestañas) y con `npm run build`. No se probó en móvil ni con datos reales.
+
+#### ⏳ Esqueletos de carga y barra de progreso al cambiar de pestaña (2026-11-02)
+- **Antes:** al pasar de una pestaña a otra aparecía un texto suelto ("Cargando actividades…") o la pantalla vacía mientras llegaba la información del backend.
+- **Barra de progreso global** (`app.vue`, `NuxtLoadingIndicator`): una barra fina de color morado arriba responde al instante al cambiar de pestaña.
+- **Esqueletos con brillo** (gris animado con la forma del contenido que va a llegar) en lugar de los textos de carga:
+  - Inicio: las tarjetas de puntaje, tiempo y precisión, las barras del gráfico, el progreso por ruta, la conexión a la app y el resumen del tutor, cada una por separado.
+  - Actividades, Analíticas (también por sección: uso de la app y desempeño), Diagnósticos, Configuración (mis datos e hijos) y Biblioteca (recomendadas).
+- El contenido aparece con un fundido suave al reemplazar al esqueleto. Quien tiene activado "reducir movimiento" en su sistema ve los esqueletos quietos y sin animación.
+- Cada región de esqueleto se anuncia a los lectores de pantalla ("Cargando…", `role="status"`).
+- Nuevos: `components/ui/UiSkeleton.vue` (bloque), `UiSkeletonRegion.vue` (región accesible) y `components/skeleton/` (`SkeletonSubjectHeader`, `SkeletonCardGrid`, `SkeletonBlock`, `SkeletonActivities`, `SkeletonAnalytics`, `SkeletonDiagnostics`). Para una pantalla nueva basta combinarlos.
+- Verificado con `npm run build` y en el navegador, simulando un backend que tarda en responder (Inicio, Actividades, Analíticas y Configuración). No se probó con datos reales ni en móvil.
+
 #### 🎨 Login legible y "Rendimiento por área" con datos reales (2026-11-01)
 - **Login (`pages/login.vue`):** el campo de contraseña se veía gris oscuro con texto casi ilegible y los campos de texto usaban Arial en vez de la fuente del sitio. Causa: `main.scss` fuerza fondo oscuro y texto blanco con `!important` a todos los campos de PrimeVue (resto de un tema oscuro anterior). Se corrigió solo en el login (es la única pantalla con campos de PrimeVue). Además: campos de 52 px con la misma fuente, texto de 16 px, etiquetas en negrita, placeholder y subtítulo con más contraste, foco con aro visible y botones y enlaces más grandes.
 - `nuxt.config.ts`: `darkModeSelector: false`. La interfaz solo tiene diseño claro; con `'system'` los componentes de PrimeVue podían pintarse oscuros en equipos con modo oscuro.

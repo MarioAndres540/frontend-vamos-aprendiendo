@@ -8,15 +8,23 @@ export interface TeacherInstitution {
   email?: string
 }
 
+/** Estudiante de un grupo asignado (sin documento: va solo en el detalle) */
 export interface TeacherStudent {
   id: string
   firstName: string
   lastName: string
-  documentType?: string
-  documentNumber?: string
-  grade: string | null
-  birthDate?: string
-  isActive: boolean
+  age: number | null
+  hasAccount: boolean
+}
+
+/** Asignación académica: grupo de un colegio + materia */
+export interface TeacherAssignment {
+  id: string
+  institutionId: string
+  group: { id: string; name: string; grade: string; academicYear: number }
+  subject: { id: string; name: string }
+  totalStudents: number
+  students: TeacherStudent[]
 }
 
 export interface TeacherDashboardData {
@@ -26,13 +34,12 @@ export interface TeacherDashboardData {
     lastName: string
     email: string
   }
-  institution: TeacherInstitution | null
-  totalStudents: number
-  students: TeacherStudent[]
+  institutions: TeacherInstitution[]
+  assignments: TeacherAssignment[]
 }
 
 /**
- * Datos del dashboard de profesores (GET /teacher/dashboard)
+ * Datos del dashboard de profesores (GET /teacher/dashboard): solo sus colegios y asignaciones activas
  */
 export const useTeacherDashboard = () => {
   const { $api } = useNuxtApp()

@@ -9,7 +9,7 @@ definePageMeta({
   headerSubtitle: 'Guías para acompañar el aprendizaje en casa',
   showsSelectedStudent: true,
   middleware: 'profile-access',
-  allowedProfiles: ['tutor', 'adulto', 'tester'],
+  allowedProfiles: ['tutor', 'adulto', 'tester', 'estudiante'],
 })
 
 const { ready, assessment, subject, load } = usePanelSubject()
@@ -118,6 +118,11 @@ const showArea = (id: string) => {
 
     <template v-else>
       <!-- Recomendado -->
+      <UiSkeletonRegion v-if="!ready" label="Cargando guías recomendadas…">
+        <SkeletonArtBanner variant="biblioteca" />
+        <SkeletonCardGrid :count="3" :min-width="280" :lines="2" />
+      </UiSkeletonRegion>
+
       <section v-if="ready && recommendedGuides.length" aria-labelledby="recommended-title" class="block">
         <div class="section-head">
           <h2 id="recommended-title" class="card-title">Recomendado para {{ subject?.firstName }}</h2>

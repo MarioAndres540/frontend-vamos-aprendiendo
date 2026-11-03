@@ -12,6 +12,8 @@ useHead({
 <template>
   <NuxtLayout>
     <NuxtRouteAnnouncer />
+    <!-- Barra fina arriba al cambiar de pestaña: respuesta inmediata mientras carga la página -->
+    <NuxtLoadingIndicator color="#5b50d6" :height="3" :throttle="0" />
     <NuxtPage />
   </NuxtLayout>
 </template>

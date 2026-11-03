@@ -5,7 +5,7 @@ definePageMeta({
   headerTitle: 'Biblioteca',
   headerSubtitle: 'Guías para acompañar el aprendizaje en casa',
   middleware: 'profile-access',
-  allowedProfiles: ['tutor', 'adulto', 'tester'],
+  allowedProfiles: ['tutor', 'adulto', 'tester', 'estudiante'],
 })
 
 const route = useRoute()

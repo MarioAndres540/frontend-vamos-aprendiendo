@@ -6,10 +6,11 @@
  * - tester   → formulario inicial en cada inicio de sesión (puede elegir versión niño o adulto).
  * - tutor    → formulario de niños solo si no lo ha completado; luego, dashboard de usuarios.
  * - adulto   → formulario de memoria / prevención solo si no lo ha completado; luego, dashboard de usuarios.
+ * - estudiante → cuenta propia de un alumno de colegio: dashboard de usuarios con sus datos. Nunca ve el formulario inicial.
  */
-export type ProfileType = 'admin' | 'profesor' | 'tester' | 'tutor' | 'adulto'
+export type ProfileType = 'admin' | 'profesor' | 'tester' | 'tutor' | 'adulto' | 'estudiante'
 
-export const PROFILE_TYPES: ProfileType[] = ['admin', 'profesor', 'tester', 'tutor', 'adulto']
+export const PROFILE_TYPES: ProfileType[] = ['admin', 'profesor', 'tester', 'tutor', 'adulto', 'estudiante']
 
 export const ROUTES = {
   login: '/login',
@@ -37,6 +38,8 @@ export const resolveHomeRoute = (profile: ProfileType, hasCompletedSetup: boolea
       return ROUTES.teacherDashboard
     case 'tester':
       return ROUTES.initialAssessment
+    case 'estudiante':
+      return ROUTES.userDashboard
     case 'tutor':
     case 'adulto':
       return hasCompletedSetup ? ROUTES.userDashboard : ROUTES.initialAssessment

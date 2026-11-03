@@ -3,9 +3,12 @@ import { areaLabel, RISK_LABELS, summarizeAreas } from '~/utils/assessment-areas
 import type { StudentAssessmentSummary } from '~/composables/useMyStudents'
 
 // Reemplaza "Perfil destacado" (pensado para profesores): el tutor ve al hijo elegido en el menú de su cuenta
-// y el adulto o tester su propio formulario
+// y el adulto o tester su propio formulario. El alumno de un colegio ve su propio registro (colegio y grado)
 const { profileType, firstName, user } = useAuth()
 const isTutor = computed(() => profileType.value === 'tutor')
+const isStudent = computed(() => profileType.value === 'estudiante')
+// GET /students/mine devuelve los hijos del tutor o, para el alumno, su propio registro
+const usesStudents = computed(() => isTutor.value || isStudent.value)
 
 const {
   students,
@@ -19,22 +22,22 @@ const {
 const { assessment: ownAssessment, loading: ownLoading, error: ownError, fetchLatest } = useMyLatestAssessment()
 
 // force: al volver al dashboard (ej. después de llenar el formulario de un hijo) se trae la información actualizada
-onMounted(() => (isTutor.value ? fetchStudents(true) : fetchLatest()))
+onMounted(() => (usesStudents.value ? fetchStudents(true) : fetchLatest()))
 
 // Hasta la primera carga de la lista no se sabe si el tutor tiene hijos (evita "Aún no tienes…" por un instante)
 const loading = computed(() =>
-  isTutor.value
+  usesStudents.value
     ? (!studentsLoaded.value && !studentsError.value) ||
       (studentsLoading.value && !selected.value) ||
       selectingId.value !== null
     : ownLoading.value,
 )
-const error = computed(() => (isTutor.value ? studentsError.value : ownError.value))
+const error = computed(() => (usesStudents.value ? studentsError.value : ownError.value))
 
 const ownName = computed(() => titleCase(firstName.value || user.value?.firstName || '') || 'Tu perfil')
 
 const person = computed(() => {
-  if (isTutor.value) {
+  if (usesStudents.value) {
     const s = selected.value
     if (!s) return null
     const details = [s.grade, s.age != null ? `${s.age} años` : null].filter(Boolean).join(' · ')
@@ -73,7 +76,18 @@ const formatDate = (iso: string) =>
       <span v-if="isTutor && students.length > 1" class="count-pill">{{ students.length }} hijos</span>
     </div>
 
-    <p v-if="loading" class="muted">Cargando información…</p>
+    <UiSkeletonRegion v-if="loading" label="Cargando información…" gap="0.9rem">
+      <div class="profile-skeleton">
+        <UiSkeleton circle height="56px" />
+        <div class="profile-skeleton-lines">
+          <UiSkeleton width="70%" height="1.2rem" />
+          <UiSkeleton width="45%" height="0.85rem" />
+        </div>
+      </div>
+      <UiSkeleton width="40%" height="0.8rem" />
+      <UiSkeleton height="0.9rem" />
+      <UiSkeleton width="85%" height="0.9rem" />
+    </UiSkeletonRegion>
 
     <p v-else-if="error" class="error">{{ error }}</p>
 
@@ -124,7 +138,7 @@ const formatDate = (iso: string) =>
         <p v-else class="muted small">No hay áreas que requieran refuerzo.</p>
       </div>
 
-      <div v-else class="no-assessment">
+      <div v-else-if="!isStudent" class="no-assessment">
         <p class="muted">
           {{ isTutor ? `Aún no hay formulario inicial de ${person.firstName}.` : 'Aún no has completado el formulario inicial.' }}
         </p>
@@ -355,5 +369,18 @@ const formatDate = (iso: string) =>
   margin: 0;
   color: #b91c1c;
   font-size: 0.85rem;
+}
+
+.profile-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.profile-skeleton-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 </style>

@@ -9,7 +9,7 @@ definePageMeta({
   headerSubtitle: 'Lo que se juega en la app, por área',
   showsSelectedStudent: true,
   middleware: 'profile-access',
-  allowedProfiles: ['tutor', 'adulto', 'tester'],
+  allowedProfiles: ['tutor', 'adulto', 'tester', 'estudiante'],
 })
 
 const { isTutor, ready, error: subjectError, hasNoStudents, studentId, assessment, subject, load } = usePanelSubject()
@@ -63,7 +63,7 @@ const error = computed(() => subjectError.value ?? progressError.value)
 
 <template>
   <main class="panel-body">
-    <p v-if="loading" class="card state-card muted">Cargando actividades…</p>
+    <SkeletonActivities v-if="loading" />
 
     <p v-else-if="error" class="card state-card error" role="alert">{{ error }}</p>
 

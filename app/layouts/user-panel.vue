@@ -8,6 +8,7 @@ const { user, logout, profileType, firstName } = useAuth()
 const { students, selected, selectingId, selectError, fetchStudents, selectStudent } = useMyStudents()
 
 const isTutor = computed(() => profileType.value === 'tutor')
+const isStudent = computed(() => profileType.value === 'estudiante')
 
 // Sin "Estudiantes": la gestión de estudiantes es del profesor (/teacher/dashboard)
 const navItems = [
@@ -18,6 +19,11 @@ const navItems = [
   { id: 'biblioteca', label: 'Biblioteca', icon: 'pi pi-book', route: '/library' },
   { id: 'configuracion', label: 'Configuración', icon: 'pi pi-cog', route: '/settings' },
 ]
+
+// El alumno de un colegio no tiene formulario inicial ni hijos a cargo: sin Diagnósticos ni Configuración
+const visibleNavItems = computed(() =>
+  isStudent.value ? navItems.filter((item) => item.id !== 'diagnosticos' && item.id !== 'configuracion') : navItems,
+)
 
 // Activo también en las subpáginas (ej. /library/atencion-en-casa)
 const isActive = (item: (typeof navItems)[number]) =>
@@ -33,6 +39,7 @@ const profileLabels: Record<string, string> = {
   tutor: 'Tutor',
   adulto: 'Adulto',
   tester: 'Tester',
+  estudiante: 'Estudiante',
 }
 const profileLabel = computed(() => profileLabels[profileType.value ?? ''] ?? 'Usuario')
 
@@ -96,7 +103,7 @@ const onSelectStudent = async (id: string) => {
 
       <nav class="sidebar-nav" aria-label="Menú principal">
         <NuxtLink
-          v-for="item in navItems"
+          v-for="item in visibleNavItems"
           :key="item.id"
           :to="item.route"
           class="nav-link"
@@ -201,7 +208,7 @@ const onSelectStudent = async (id: string) => {
       <!-- Menú en tablet y celular, donde el menú lateral no se muestra -->
       <nav class="mobile-nav" aria-label="Menú principal">
         <NuxtLink
-          v-for="item in navItems"
+          v-for="item in visibleNavItems"
           :key="item.id"
           :to="item.route"
           class="mobile-nav-link"

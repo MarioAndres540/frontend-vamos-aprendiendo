@@ -55,7 +55,13 @@ const playingStudent = computed(() => {
       </span>
     </div>
 
-    <div v-if="loading" class="connection-body muted">Consultando estado…</div>
+    <UiSkeletonRegion v-if="loading" label="Consultando estado de la app…" gap="0.6rem">
+      <div class="connection-body">
+        <UiSkeleton width="55%" height="2rem" />
+        <UiSkeleton width="90%" height="0.85rem" />
+        <UiSkeleton width="65%" height="0.85rem" />
+      </div>
+    </UiSkeletonRegion>
 
     <div v-else-if="error && !status" class="connection-body error">{{ error }}</div>
 

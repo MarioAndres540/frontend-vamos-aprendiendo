@@ -11,7 +11,7 @@ definePageMeta({
   headerSubtitle: 'Uso de la app y desempeño en el juego',
   showsSelectedStudent: true,
   middleware: 'profile-access',
-  allowedProfiles: ['tutor', 'adulto', 'tester'],
+  allowedProfiles: ['tutor', 'adulto', 'tester', 'estudiante'],
 })
 
 const { isTutor, ready, error: subjectError, hasNoStudents, studentId, assessment, subject, load } = usePanelSubject()
@@ -182,7 +182,7 @@ const error = computed(() => subjectError.value)
 
 <template>
   <main class="panel-body">
-    <p v-if="loading" class="card state-card muted">Cargando analíticas…</p>
+    <SkeletonAnalytics v-if="loading" />
 
     <p v-else-if="error" class="card state-card error" role="alert">{{ error }}</p>
 
@@ -211,7 +211,10 @@ const error = computed(() => subjectError.value)
         </div>
 
         <p v-if="usageError" class="card state-card error" role="alert">{{ usageError }}</p>
-        <p v-else-if="usageLoading && !usage" class="card state-card muted">Cargando uso de la app…</p>
+        <UiSkeletonRegion v-else-if="usageLoading && !usage" label="Cargando uso de la app…">
+          <SkeletonCardGrid :count="4" :min-width="220" :lines="1" />
+          <SkeletonBlock height="200px" />
+        </UiSkeletonRegion>
 
         <template v-else-if="usage">
           <div class="kpi-grid">
@@ -292,7 +295,9 @@ const error = computed(() => subjectError.value)
           </div>
 
           <p v-if="performanceError" class="error" role="alert">{{ performanceError }}</p>
-          <p v-else-if="performanceLoading && !performance" class="muted">Cargando desempeño…</p>
+          <UiSkeletonRegion v-else-if="performanceLoading && !performance" label="Cargando desempeño…">
+            <SkeletonCardGrid :count="5" :min-width="220" :lines="2" />
+          </UiSkeletonRegion>
 
           <ul v-else-if="performance" class="metric-grid">
             <li v-for="m in performance.metrics" :key="m.key" class="metric">

@@ -236,7 +236,15 @@ const formatDate = (iso: string) =>
       <section class="settings-card" aria-labelledby="my-data-title">
         <h2 id="my-data-title" class="card-title">Mis datos</h2>
 
-        <p v-if="profileLoading && !profile" class="muted">Cargando tus datos…</p>
+        <UiSkeletonRegion v-if="profileLoading && !profile" label="Cargando tus datos…">
+          <SkeletonArtBanner variant="configuracion" height="96px" />
+          <div class="skeleton-data">
+            <div v-for="n in 6" :key="n" class="skeleton-data-item">
+              <UiSkeleton width="40%" height="0.7rem" />
+              <UiSkeleton width="80%" height="1.1rem" />
+            </div>
+          </div>
+        </UiSkeletonRegion>
         <p v-else-if="profileError && !profile" class="error">{{ profileError }}</p>
 
         <dl v-else-if="profile" class="data-grid">
@@ -360,7 +368,15 @@ const formatDate = (iso: string) =>
           </button>
         </div>
 
-        <p v-if="(studentsLoading || (!studentsLoaded && !studentsError)) && students.length === 0" class="muted">Cargando…</p>
+        <UiSkeletonRegion v-if="(studentsLoading || (!studentsLoaded && !studentsError)) && students.length === 0" label="Cargando hijos o menores…">
+          <div class="skeleton-student">
+            <UiSkeleton circle height="56px" />
+            <div class="skeleton-student-lines">
+              <UiSkeleton width="55%" height="1.1rem" />
+              <UiSkeleton width="35%" height="0.8rem" />
+            </div>
+          </div>
+        </UiSkeletonRegion>
         <p v-else-if="studentsError && students.length === 0" class="error">{{ studentsError }}</p>
         <p v-else-if="students.length === 0" class="muted">Aún no tienes hijos o menores registrados.</p>
 
@@ -1007,5 +1023,31 @@ $color-border-subtle: #e2e8f0;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+// Esqueletos de "Mis datos" y de los hijos mientras llega la información
+.skeleton-data {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+  gap: 1.1rem 1.5rem;
+}
+
+.skeleton-data-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.skeleton-student {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.skeleton-student-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 </style>

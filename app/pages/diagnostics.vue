@@ -160,7 +160,7 @@ const printReport = () => window.print()
 
 <template>
   <main class="diagnostics-body">
-    <p v-if="loading && !assessment" class="state-card muted">Cargando diagnóstico…</p>
+    <SkeletonDiagnostics v-if="loading && !assessment" />
 
     <p v-else-if="error" class="state-card error" role="alert">{{ error }}</p>
 
@@ -964,6 +964,23 @@ table {
     box-shadow: none;
     border: 1px solid $color-border-subtle;
     break-inside: avoid;
+  }
+}
+
+@keyframes diagnostics-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .diagnostics-body > :not([aria-busy]) {
+    animation: diagnostics-reveal 0.28s ease-out both;
   }
 }
 </style>
