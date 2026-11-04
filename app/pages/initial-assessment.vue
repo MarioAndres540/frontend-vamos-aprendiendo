@@ -16,7 +16,40 @@ definePageMeta({
 })
 
 const { profileType } = useAuth()
-const { kidsQuestions, adultsQuestions, submitAssessment, loading, error, lastResult } = useAssessment()
+const { kidsQuestions, adultsQuestions, submitAssessment, skipAssessment, loading, error, lastResult } = useAssessment()
+
+// Las respuestas son datos sensibles (Ley 1581, spec 0004 PD-SENS-04): antes de preguntar se pide la
+// autorización facultativa; sin ella la persona puede omitir la evaluación y seguir.
+const { consents, load: loadConsents, setSensitiveConsent } = usePrivacy()
+const consentState = ref<'loading' | 'granted' | 'missing'>('loading')
+const consentSaving = ref(false)
+const consentError = ref<string | null>(null)
+
+const refreshConsentState = () => {
+  consentState.value = consents.value?.sensitiveData?.granted ? 'granted' : 'missing'
+}
+
+const authorizeSensitiveData = async () => {
+  consentSaving.value = true
+  consentError.value = null
+  try {
+    await setSensitiveConsent(true)
+    refreshConsentState()
+  } catch (err: any) {
+    consentError.value = err?.message || 'No pudimos guardar tu autorización. Intenta de nuevo.'
+  } finally {
+    consentSaving.value = false
+  }
+}
+
+const skip = async () => {
+  consentError.value = null
+  if (await skipAssessment()) {
+    await navigateTo('/dashboard')
+  } else {
+    consentError.value = error.value
+  }
+}
 
 // Formulario de un hijo concreto (?studentId=…): al agregarlo en Configuración o si quedó pendiente
 const route = useRoute()
@@ -29,6 +62,8 @@ const { selectStudent, selectError } = useMyStudents()
 const studentName = ref<string | null>(null)
 
 onMounted(async () => {
+  await loadConsents()
+  refreshConsentState()
   if (!studentId.value) return
   // Trae al estudiante (y lo deja seleccionado para verlo en el dashboard al terminar)
   const student = await selectStudent(studentId.value)
@@ -93,6 +128,10 @@ const changeTarget = (target: 'nino' | 'adulto') => {
 }
 
 const handleFinalSubmit = async () => {
+  // Si la autorización se revocó en otra pestaña, el backend responde 403: se vuelve a preguntar
+  const consentRevoked = () => {
+    if (error.value && /datos sensibles/i.test(error.value)) consentState.value = 'missing'
+  }
   const payloadAnswers: AssessmentAnswerItem[] = activeQuestions.value.map((q) => ({
     questionId: q.id,
     dimension: q.dimension,
@@ -102,6 +141,8 @@ const handleFinalSubmit = async () => {
   const result = await submitAssessment(selectedTarget.value, payloadAnswers, studentId.value ?? undefined)
   if (result) {
     showResultsModal.value = true
+  } else {
+    consentRevoked()
   }
 }
 
@@ -165,6 +206,42 @@ const likertOptions = [
         <NuxtLink to="/settings">Volver a Configuración</NuxtLink>
       </p>
 
+      <p v-if="consentState === 'loading'" class="consent-loading" role="status">
+        <i class="pi pi-spin pi-spinner"></i> Cargando…
+      </p>
+
+      <!-- Autorización de datos sensibles antes de la evaluación (Ley 1581, spec 0004 PD-SENS-04) -->
+      <section v-else-if="consentState === 'missing'" class="consent-card" aria-labelledby="consent-title">
+        <span class="consent-icon"><i class="pi pi-shield"></i></span>
+        <h2 id="consent-title" class="consent-title">Antes de empezar: tus datos sensibles</h2>
+        <p>
+          Esta evaluación pregunta por atención, memoria, control de impulsos y aprendizaje{{ studentId ? ' del menor' : '' }}.
+          Para la ley colombiana son <strong>datos sensibles</strong>: solo los guardamos con tu autorización expresa,
+          y sirven para recomendar la ruta de aprendizaje. No son un diagnóstico médico.
+        </p>
+        <p>
+          <strong>Responderla es opcional.</strong> Si prefieres no hacerlo, puedes omitirla y usar la plataforma igual.
+          Puedes cambiar tu decisión cuando quieras en <em>Privacidad y mis datos</em>.
+          <NuxtLink to="/data-policy" target="_blank">Ver la política de tratamiento de datos</NuxtLink>.
+        </p>
+
+        <p v-if="consentError" class="error-msg" role="alert">
+          <i class="pi pi-exclamation-circle mr-1"></i> {{ consentError }}
+        </p>
+
+        <div class="consent-actions">
+          <button type="button" class="btn-nav btn-submit" :disabled="consentSaving || loading" @click="authorizeSensitiveData">
+            <i v-if="consentSaving" class="pi pi-spin pi-spinner mr-2"></i>
+            Autorizar y continuar
+          </button>
+          <button type="button" class="btn-nav btn-prev" :disabled="consentSaving || loading" @click="skip">
+            <i v-if="loading" class="pi pi-spin pi-spinner mr-2"></i>
+            Omitir evaluación
+          </button>
+        </div>
+      </section>
+
+      <template v-else>
       <!-- Barra de Progreso -->
       <div class="progress-section">
         <div class="progress-labels">
@@ -242,6 +319,7 @@ const likertOptions = [
           </button>
         </div>
       </section>
+      </template>
     </main>
 
     <!-- Modal de Resultados Diagnósticos -->
@@ -407,6 +485,61 @@ const likertOptions = [
       transition: width 0.3s ease;
     }
   }
+}
+
+// Autorización de datos sensibles (Ley 1581)
+.consent-loading {
+  text-align: center;
+  color: #475569;
+}
+
+.consent-card {
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 24px;
+  padding: 2rem;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+  color: #334155;
+  line-height: 1.6;
+
+  @media (max-width: 640px) {
+    padding: 1.25rem;
+  }
+
+  p {
+    margin: 0 0 0.85rem;
+  }
+
+  a {
+    color: #4f46e5;
+    font-weight: 600;
+  }
+}
+
+.consent-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 1.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.consent-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
 }
 
 .question-card {

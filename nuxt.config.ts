@@ -39,6 +39,22 @@ export default defineNuxtConfig({
     '~/assets/scss/main.scss'
   ],
 
+  // Cabeceras de seguridad en todas las páginas (spec 0002, SEC-HEAD-02). HSTS solo en producción:
+  // en http://localhost obligaría al navegador a usar HTTPS para ese dominio
+  routeRules: {
+    '/**': {
+      headers: {
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+        ...(process.env.NODE_ENV === 'production'
+          ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' }
+          : {})
+      }
+    }
+  },
+
   // El puerto de desarrollo se define solo aquí. No usar PORT en .env: Nuxt/Vite lo toman como primer
   // candidato para el WebSocket de HMR, que termina ocupando 127.0.0.1:4242 y responde "426 Upgrade Required"
   devServer: {
@@ -47,7 +63,17 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:3000/api/v1'
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:3000/api/v1',
+      // Responsable del tratamiento de datos (Ley 1581, spec 0004 PD-POL-02). Se muestran en /data-policy;
+      // en producción se definen con NUXT_PUBLIC_DATA_CONTROLLER_NAME, _ID, _ADDRESS, _CITY, _EMAIL y _PHONE
+      dataController: {
+        name: '',
+        id: '',
+        address: '',
+        city: '',
+        email: '',
+        phone: ''
+      }
     }
   },
 

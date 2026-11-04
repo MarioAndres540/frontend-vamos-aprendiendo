@@ -123,6 +123,8 @@ const emptyChild = () => ({
   grade: '',
   // '' = "Sin colegio asignado"
   institutionId: '',
+  // Ley 1581 (spec 0004): autorización del representante legal, nunca marcada de antemano
+  acceptedMinorsData: false,
 })
 const child = reactive(emptyChild())
 const childAge = computed(() => ageFromBirthDate(child.birthDate))
@@ -162,9 +164,15 @@ const submitChild = async () => {
     return
   }
 
+  if (!child.acceptedMinorsData) {
+    addError.value = 'Para registrar al menor debes autorizar, como su representante legal, el tratamiento de sus datos.'
+    return
+  }
+
   addSaving.value = true
   try {
     const student = await createStudent({
+      acceptedMinorsData: true,
       firstName: child.firstName.trim(),
       lastName: child.lastName.trim(),
       documentType: child.documentType,
@@ -521,6 +529,14 @@ const formatDate = (iso: string) =>
             </div>
           </div>
 
+          <label for="child-minors-consent" class="consent-field">
+            <input id="child-minors-consent" v-model="child.acceptedMinorsData" type="checkbox" />
+            <span>
+              Como representante legal del menor, autorizo el tratamiento de sus datos personales según la
+              <NuxtLink to="/data-policy" target="_blank">política de tratamiento de datos</NuxtLink>.
+            </span>
+          </label>
+
           <p v-if="addError" class="error" role="alert">{{ addError }}</p>
 
           <div class="form-actions">
@@ -550,6 +566,35 @@ $color-border-subtle: #e2e8f0;
 
   @media (max-width: 768px) {
     padding: 1rem 1rem 2rem;
+  }
+}
+
+// Autorización del representante legal (Ley 1581)
+.consent-field {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 1rem;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid $color-border-subtle;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #475569;
+  cursor: pointer;
+
+  input {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin: 2px 0 0;
+    accent-color: $color-brand-indigo;
+  }
+
+  a {
+    color: $color-brand-indigo;
+    font-weight: 600;
   }
 }
 

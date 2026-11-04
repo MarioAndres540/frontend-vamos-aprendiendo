@@ -294,6 +294,8 @@ const handleGoogleLogin = () => {
       <div class="security-badge">
         <i class="pi pi-shield"></i>
         <span>Entorno seguro y protegido para aprender</span>
+        <span class="badge-sep" aria-hidden="true">·</span>
+        <NuxtLink to="/data-policy" class="policy-link">Tratamiento de datos</NuxtLink>
       </div>
     </footer>
   </div>
@@ -985,6 +987,19 @@ $border-focus: #3b50df;
   i {
     color: #10b981;
     font-size: 0.95rem;
+  }
+
+  .badge-sep {
+    color: #cbd5e1;
+  }
+
+  .policy-link {
+    color: #4f46e5;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
   }
 }
 

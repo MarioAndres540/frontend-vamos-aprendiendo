@@ -40,6 +40,10 @@ export interface RegisterPayload {
   email: string
   phone: string
   acceptedTerms: boolean
+  /** Ley 1581 (spec 0004): versión de la política aceptada y autorizaciones separadas */
+  policyVersion: string
+  acceptedMinorsData?: boolean
+  acceptedSensitiveData?: boolean
   password: string
   institutionId?: string
   professionalLicense?: string
@@ -82,20 +86,11 @@ const extractApiErrorMessage = (err: any, fallback: string): string => {
 }
 
 export const useAuth = () => {
-  const token = useCookie<string | null>('auth_token', {
-    maxAge: 60 * 60 * 24 * 7, // 7 días
-    sameSite: 'lax',
-  })
+  const token = useCookie<string | null>('auth_token', SESSION_COOKIE_OPTIONS)
 
-  const refreshToken = useCookie<string | null>('refresh_token', {
-    maxAge: 60 * 60 * 24 * 7,
-    sameSite: 'lax',
-  })
+  const refreshToken = useCookie<string | null>('refresh_token', SESSION_COOKIE_OPTIONS)
 
-  const userRole = useCookie<string | null>('user_role', {
-    maxAge: 60 * 60 * 24 * 7,
-    sameSite: 'lax',
-  })
+  const userRole = useCookie<string | null>('user_role', SESSION_COOKIE_OPTIONS)
 
   // true cuando el usuario ya completó el formulario inicial (has_completed_setup en el backend)
   const hasChildProfile = useCookie<boolean>('has_child_profile', SESSION_COOKIE_OPTIONS)

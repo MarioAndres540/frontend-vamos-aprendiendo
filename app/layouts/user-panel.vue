@@ -18,11 +18,15 @@ const navItems = [
   { id: 'analiticas', label: 'Analíticas', icon: 'pi pi-chart-bar', route: '/analytics' },
   { id: 'biblioteca', label: 'Biblioteca', icon: 'pi pi-book', route: '/library' },
   { id: 'configuracion', label: 'Configuración', icon: 'pi pi-cog', route: '/settings' },
+  // Derechos del titular (Ley 1581, spec 0004)
+  { id: 'privacidad', label: 'Privacidad', icon: 'pi pi-shield', route: '/privacy' },
 ]
 
-// El alumno de un colegio no tiene formulario inicial ni hijos a cargo: sin Diagnósticos ni Configuración
+// El alumno de un colegio no tiene formulario inicial ni hijos a cargo: sin Diagnósticos ni Configuración.
+// Sus datos los responde el colegio (spec 0004, PD-D5): tampoco ve Privacidad
+const STUDENT_HIDDEN_ITEMS = ['diagnosticos', 'configuracion', 'privacidad']
 const visibleNavItems = computed(() =>
-  isStudent.value ? navItems.filter((item) => item.id !== 'diagnosticos' && item.id !== 'configuracion') : navItems,
+  isStudent.value ? navItems.filter((item) => !STUDENT_HIDDEN_ITEMS.includes(item.id)) : navItems,
 )
 
 // Activo también en las subpáginas (ej. /library/atencion-en-casa)

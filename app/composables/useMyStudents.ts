@@ -42,6 +42,8 @@ export interface NewStudentPayload {
   age: number
   grade?: string
   institutionId?: string
+  /** Autorización del representante legal (Ley 1581, spec 0004): el backend exige true */
+  acceptedMinorsData: true
 }
 
 const apiErrorMessage = (err: any, fallback: string) => {

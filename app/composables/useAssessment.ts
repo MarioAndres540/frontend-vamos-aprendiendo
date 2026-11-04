@@ -189,6 +189,29 @@ export const useAssessment = () => {
     }
   }
 
+  /**
+   * Omitir la evaluación inicial (Ley 1581, spec 0004 PD-SENS-02): responderla es facultativo.
+   * El backend marca la configuración como completa sin guardar datos.
+   */
+  const skipAssessment = async (): Promise<boolean> => {
+    loading.value = true
+    error.value = null
+    try {
+      await $api('/assessments/skip', { method: 'POST' })
+      if (user.value) {
+        user.value = { ...user.value, hasCompletedSetup: true }
+      }
+      const hasChildProfile = useCookie<boolean>('has_child_profile', SESSION_COOKIE_OPTIONS)
+      hasChildProfile.value = true
+      return true
+    } catch (err: any) {
+      error.value = err.data?.message || 'No pudimos omitir la evaluación. Intenta de nuevo.'
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     kidsQuestions,
     adultsQuestions,
@@ -196,5 +219,6 @@ export const useAssessment = () => {
     loading,
     error,
     submitAssessment,
+    skipAssessment,
   }
 }

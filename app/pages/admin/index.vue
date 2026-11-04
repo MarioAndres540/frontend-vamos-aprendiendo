@@ -64,7 +64,7 @@ const formatDate = (value: string | null) =>
 
 <template>
   <div class="panel-page" :style="{ backgroundImage: `url(${fondoImg})` }">
-    <LayoutPanelHeader badge="Administrador" />
+    <LayoutPanelHeader badge="Super administrador" />
 
     <main class="panel-content">
       <section class="welcome">
@@ -96,6 +96,16 @@ const formatDate = (value: string | null) =>
           </div>
         </article>
       </section>
+
+      <!-- Protección de datos (Ley 1581, spec 0004) -->
+      <NuxtLink to="/admin/data-requests" class="card shortcut-card">
+        <span class="stat-icon tone-blue"><i class="pi pi-shield"></i></span>
+        <span class="shortcut-body">
+          <strong>Solicitudes de datos personales</strong>
+          <span>Consultas, rectificaciones y supresiones de los titulares, con sus plazos legales.</span>
+        </span>
+        <i class="pi pi-angle-right shortcut-arrow"></i>
+      </NuxtLink>
 
       <!-- Usuarios -->
       <section class="card">
@@ -190,4 +200,34 @@ const formatDate = (value: string | null) =>
 
 <style scoped lang="scss">
 @use '../../assets/scss/panel' as *;
+
+.shortcut-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-decoration: none;
+  color: inherit;
+
+  &:hover {
+    border-color: #c7d2fe;
+  }
+}
+
+.shortcut-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: #64748b;
+
+  strong {
+    font-size: 1rem;
+    color: #1e293b;
+  }
+}
+
+.shortcut-arrow {
+  color: #94a3b8;
+}
 </style>

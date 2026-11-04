@@ -38,6 +38,9 @@ const form = reactive({
   email: '',
   phone: '',
   acceptedTerms: false,
+  // Ley 1581 (spec 0004): autorizaciones separadas y nunca marcadas de antemano
+  acceptedMinorsData: false,
+  acceptedSensitiveData: false,
   password: '',
   // Campos Docente
   institutionId: '',
@@ -115,10 +118,6 @@ const stepLabels = computed(() => {
     : profileType.value === 'profesor' ? 'Institución' : 'Confirmar'
   return ['Perfil', 'Tus datos', third]
 })
-
-const termsSubject = computed(() =>
-  profileType.value === 'tutor' ? 'datos personales de menores de edad' : 'datos personales',
-)
 
 // Listas compartidas con la vista de Configuración (app/utils/form-options.ts)
 const documentTypes = DOCUMENT_TYPES_ADULT
@@ -309,7 +308,12 @@ const handleRegister = async () => {
   }
 
   if (!form.acceptedTerms) {
-    validationError.value = 'Debes aceptar los términos y condiciones para continuar.'
+    validationError.value = 'Debes aceptar los términos y la política de tratamiento de datos para continuar.'
+    return
+  }
+
+  if (profileType.value === 'tutor' && !form.acceptedMinorsData) {
+    validationError.value = 'Para registrar a los menores debes autorizar, como su representante legal, el tratamiento de sus datos.'
     return
   }
 
@@ -323,6 +327,10 @@ const handleRegister = async () => {
     email: form.email.trim(),
     phone: form.phone.trim(),
     acceptedTerms: form.acceptedTerms,
+    policyVersion: PRIVACY_POLICY_VERSION,
+    acceptedMinorsData: profileType.value === 'tutor' ? form.acceptedMinorsData : undefined,
+    // El docente no responde la evaluación inicial: no se le pide esta autorización
+    acceptedSensitiveData: profileType.value === 'profesor' ? undefined : form.acceptedSensitiveData,
     password: form.password,
     institutionId: profileType.value === 'profesor' ? form.institutionId || undefined : undefined,
     professionalLicense: form.professionalLicense ? form.professionalLicense.trim() : undefined,
@@ -709,8 +717,8 @@ const handleSubmit = () => {
               <div class="info-card tone-blue">
                 <span class="info-icon"><i class="pi pi-file-edit"></i></span>
                 <span class="info-text">
-                  <strong>Evaluación inicial de 7 preguntas</strong>
-                  <span>Memoria, orientación, fluidez verbal y funciones ejecutivas. Con tus respuestas ajustamos las actividades a tu nivel.</span>
+                  <strong>Evaluación inicial de 7 preguntas (opcional)</strong>
+                  <span>Memoria, orientación, fluidez verbal y funciones ejecutivas. Con tus respuestas ajustamos las actividades a tu nivel; si prefieres, puedes omitirla.</span>
                 </span>
               </div>
               <div class="info-card tone-green">
@@ -722,13 +730,36 @@ const handleSubmit = () => {
               </div>
             </template>
 
-            <!-- Términos y condiciones (común a todos los perfiles) -->
-            <label for="acceptedTerms" class="terms-field">
-              <input id="acceptedTerms" v-model="form.acceptedTerms" type="checkbox" class="terms-checkbox" />
-              <span class="terms-label">
-                Acepto los términos del servicio, la política de tratamiento de {{ termsSubject }} y el periodo de prueba gratuito de 14 días.
-              </span>
-            </label>
+            <!-- Autorizaciones de tratamiento de datos (Ley 1581, spec 0004): separadas y sin marcar -->
+            <div class="consents" role="group" aria-labelledby="consents-title">
+              <p id="consents-title" class="consents-title">Autorizaciones</p>
+
+              <label for="acceptedTerms" class="terms-field">
+                <input id="acceptedTerms" v-model="form.acceptedTerms" type="checkbox" class="terms-checkbox" />
+                <span class="terms-label">
+                  <strong>Obligatoria.</strong> Acepto los términos del servicio y el periodo de prueba gratuito de 14 días,
+                  y autorizo el tratamiento de mis datos personales según la
+                  <NuxtLink to="/data-policy" target="_blank" class="terms-link">política de tratamiento de datos</NuxtLink>.
+                </span>
+              </label>
+
+              <label v-if="profileType === 'tutor'" for="acceptedMinorsData" class="terms-field">
+                <input id="acceptedMinorsData" v-model="form.acceptedMinorsData" type="checkbox" class="terms-checkbox" />
+                <span class="terms-label">
+                  <strong>Obligatoria.</strong> Como representante legal de los menores que registro, autorizo el
+                  tratamiento de sus datos personales para el servicio educativo.
+                </span>
+              </label>
+
+              <label v-if="profileType !== 'profesor'" for="acceptedSensitiveData" class="terms-field">
+                <input id="acceptedSensitiveData" v-model="form.acceptedSensitiveData" type="checkbox" class="terms-checkbox" />
+                <span class="terms-label">
+                  <strong>Opcional.</strong> Autorizo el tratamiento de datos sensibles: las respuestas de la evaluación
+                  inicial sobre atención, memoria y aprendizaje{{ profileType === 'tutor' ? ' de los menores' : '' }}.
+                  No estás obligado a autorizarlo; sin esta autorización puedes omitir la evaluación y usar la plataforma igual.
+                </span>
+              </label>
+            </div>
           </div>
 
           <!-- Mensajes de error -->
@@ -1673,6 +1704,25 @@ $bp-small: 380px;
     font-size: 14px;
     color: $text-dark-title;
   }
+}
+
+/* Autorizaciones (Ley 1581) */
+.consents {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.consents-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.terms-link {
+  color: $color-brand-blue;
+  font-weight: 600;
 }
 
 /* Términos */

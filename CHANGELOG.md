@@ -6,6 +6,32 @@ Todos los cambios notables realizados en este proyecto se documentarán en este 
 
 ## [Unreleased]
 
+#### 🛡️ Protección de datos personales — Ley 1581 (2026-11-04)
+Spec: `backend/docs/specs/0004-proteccion-datos-personales.md`.
+- Nueva página pública `/data-policy` con la política de tratamiento de datos. Los datos del responsable salen de `NUXT_PUBLIC_DATA_CONTROLLER_*` y **hay que definirlos antes de desplegar**. La política está enlazada desde el login, el registro y la página de privacidad.
+- **Registro:** la casilla única se reemplazó por tres autorizaciones separadas y sin marcar:
+  - tratamiento de datos (obligatoria);
+  - datos de menores como representante legal (obligatoria para el tutor);
+  - datos sensibles (opcional).
+
+  El registro envía la versión de la política (`PRIVACY_POLICY_VERSION` en `utils/privacy.ts`, que debe coincidir con la del backend).
+- **Agregar un menor** en Configuración pide la autorización del representante legal.
+- **Evaluación inicial:** antes de las preguntas pide la autorización de datos sensibles y permite **omitir** la evaluación.
+- Nueva página **Privacidad** (`/privacy`, en el menú del panel):
+  - ver las autorizaciones;
+  - otorgar o revocar los datos sensibles;
+  - descargar mis datos en JSON;
+  - radicar consultas y reclamos y ver su respuesta.
+- **Super administrador:** el panel muestra "Super administrador" y enlaza a `/admin/data-requests`, donde se tramitan las solicitudes y se ejecuta la supresión con confirmación.
+
+#### 🏆 El puntaje cuenta lo cobrado en el cofre (2026-11-03)
+- "Puntaje por actividades completadas" suma solo el XP que el jugador cobró en el cofre del juego y avisa aparte "N XP por cobrar en el cofre del juego" (`pendingXp` de `GET /telemetry/xp`).
+
+#### 🔒 Seguridad: cookies y cabeceras (2026-11-03)
+Spec: `backend/docs/specs/0002-endurecimiento-seguridad.md`.
+- Las cookies de sesión llevan `Secure` en producción (solo viajan por HTTPS). Sus opciones están ahora en un solo lugar: `SESSION_COOKIE_OPTIONS` (`utils/profile-routes.ts`), que usan `useAuth` y el plugin de la API.
+- Cabeceras de seguridad en todas las páginas (`routeRules` en `nuxt.config.ts`): `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` y, en producción, HSTS.
+- Dependencias actualizadas sin cambios incompatibles (Nuxt 4.6.4, Vue 3.5.44): se corrigen todas las vulnerabilidades altas y críticas, entre ellas una XSS en `@vue/server-renderer`. Quedan 6 bajas y 7 moderadas.
 #### 🧩 Dashboard: espacio para las tres rutas (2026-11-03)
 - Se quitó la tarjeta "Acciones rápidas" del dashboard. "Tutor de" / "Mi perfil" pasa a su lugar, junto al calendario.
 - "Progreso por ruta" ocupa ahora dos columnas, así las tres rutas (Matemáticas, Escritura y Consonantes) caben en una fila sin deformar la tarjeta.
