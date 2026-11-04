@@ -27,8 +27,11 @@ export interface XpHistoryItem {
 
 export interface XpSummary {
   studentId: string | null
+  /** XP ya cobrado en el cofre del juego */
   totalXp: number
   rewardsCount: number
+  /** XP de ejercicios aprobados que el jugador aún no cobra en el cofre (no está en totalXp) */
+  pendingXp?: number
   history: XpHistoryItem[]
 }
 

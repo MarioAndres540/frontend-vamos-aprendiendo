@@ -68,16 +68,21 @@ interface KpiMetric {
 const monthName = (iso: string) =>
   new Date(iso).toLocaleDateString('es-CO', { month: 'long', timeZone: 'America/Bogota' })
 
-// Puntaje por actividades completadas: XP acumulado (10 por cada letra o número aprobado, una sola vez)
+// Puntaje por actividades completadas: XP cobrado en el cofre del juego (10 por cada letra o número aprobado, una sola vez).
+// El de los ejercicios aprobados que aún no se cobran se avisa aparte: no suma hasta que el jugador abre el cofre.
 const xpMetric = computed<KpiMetric>(() => {
   const base = { id: 'xp', title: 'Puntaje por actividades completadas', icon: 'pi pi-trophy', bgColor: '#fef3c7', iconColor: '#d97706' }
   if (xpLoading.value && !xp.value) return { ...base, value: '', loading: true }
   if (!xp.value) return { ...base, value: '—', detail: xpError.value ?? undefined, unavailable: true }
   const count = xp.value.rewardsCount
+  const pendingXp = xp.value.pendingXp ?? 0
   return {
     ...base,
     value: `${xp.value.totalXp.toLocaleString('es-CO')} XP`,
-    detail: count === 0 ? 'Aún sin ejercicios aprobados' : `${count} ${count === 1 ? 'ejercicio aprobado' : 'ejercicios aprobados'}`,
+    detail: [
+      count === 0 ? 'Aún sin ejercicios cobrados en el cofre' : `${count} ${count === 1 ? 'ejercicio cobrado' : 'ejercicios cobrados'}`,
+      pendingXp > 0 ? `${pendingXp.toLocaleString('es-CO')} XP por cobrar en el cofre del juego` : null,
+    ].filter(Boolean).join(' · '),
   }
 })
 
