@@ -4,10 +4,8 @@ import type { LoginResponse } from '~/composables/useAuth'
 // Endpoints de autenticación que nunca deben disparar la renovación del token
 const AUTH_ENDPOINTS_WITHOUT_REFRESH = ['/auth/login', '/auth/register', '/auth/oauth', '/auth/refresh']
 
-const COOKIE_OPTIONS = {
-  maxAge: 60 * 60 * 24 * 7, // 7 días (igual que en useAuth)
-  sameSite: 'lax' as const,
-}
+// Las mismas opciones que en useAuth (incluye Secure en producción)
+const COOKIE_OPTIONS = SESSION_COOKIE_OPTIONS
 
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig()

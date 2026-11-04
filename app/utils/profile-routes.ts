@@ -20,10 +20,12 @@ export const ROUTES = {
   initialAssessment: '/initial-assessment',
 } as const
 
-// Opciones comunes de las cookies de sesión (las mismas en useAuth y en el middleware)
+// Opciones comunes de las cookies de sesión (useAuth, el plugin de la API y el middleware).
+// En producción solo viajan por HTTPS (spec 0002, SEC-COOKIE-01); en desarrollo no, para que funcione http://localhost
 export const SESSION_COOKIE_OPTIONS = {
   maxAge: 60 * 60 * 24 * 7, // 7 días
   sameSite: 'lax' as const,
+  secure: !import.meta.dev,
 }
 
 export const isProfileType = (value: unknown): value is ProfileType =>
